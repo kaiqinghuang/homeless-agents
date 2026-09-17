@@ -1,158 +1,148 @@
 #!/usr/bin/env python3
-"""Offline mouth-motion prototype. Python 3.9+, macOS for Mandarin romanization."""
+"""Local listening with phoneme-driven, silent mouth animation."""
 import argparse
-import ctypes
 import json
-import re
-import sys
-import unicodedata
-from functools import lru_cache
+import math
+import time
+import signal
+from urllib.parse import urlsplit, parse_qs
+from audio_runtime import AudioArchive, WhisperEngine, audio_features
+from mouth_plan import plan
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-CF = None
-if sys.platform == 'darwin':
-    CF = ctypes.CDLL('/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation')
-    CF.CFStringCreateMutable.argtypes = [ctypes.c_void_p, ctypes.c_long]
-    CF.CFStringCreateMutable.restype = ctypes.c_void_p
-    CF.CFStringAppendCString.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_uint32]
-    CF.CFStringTransform.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool]
-    CF.CFStringTransform.restype = ctypes.c_bool
-    CF.CFStringCreateWithCString.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_uint32]
-    CF.CFStringCreateWithCString.restype = ctypes.c_void_p
-    CF.CFStringGetCString.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_long, ctypes.c_uint32]
-    CF.CFStringGetCString.restype = ctypes.c_bool
-    CF.CFRelease.argtypes = [ctypes.c_void_p]
-
-@lru_cache(maxsize=1024)
-def romanize(text):
-    if not CF:
-        raise ValueError('Mandarin romanization requires macOS in this prototype.')
-    string = CF.CFStringCreateMutable(None, 0)
-    transform = CF.CFStringCreateWithCString(None, b'Han-Latin', 0x08000100)
-    try:
-        CF.CFStringAppendCString(string, text.encode('utf-8'), 0x08000100)
-        if not CF.CFStringTransform(string, None, transform, False):
-            raise ValueError('Could not romanize Mandarin text.')
-        buffer = ctypes.create_string_buffer(len(text.encode('utf-8')) * 16 + 128)
-        if not CF.CFStringGetCString(string, buffer, len(buffer), 0x08000100):
-            raise ValueError('Mandarin conversion exceeded its buffer.')
-        return ''.join(c for c in unicodedata.normalize('NFD', buffer.value.decode())
-                       if unicodedata.category(c) != 'Mn').lower()
-    finally:
-        CF.CFRelease(string)
-        CF.CFRelease(transform)
-
-# Approximate spelling-to-mouth rules, not a phonetic dictionary or speech synthesis.
-EN_EXCEPTIONS = {
-    'i': 'ai', 'eye': 'ai', 'you': 'yu', 'your': 'yor', 'are': 'ar',
-    'the': 'dhuh', 'a': 'uh', 'one': 'wun', 'two': 'tu', 'to': 'tu',
-    'of': 'uv', 'hear': 'heer', 'here': 'heer', 'there': 'dhair',
-    'where': 'wair', 'some': 'sum', 'come': 'kum', 'does': 'duz',
-    'have': 'hav', 'love': 'luv', 'move': 'muv', 'live': 'liv',
-    'room': 'ruum', 'noise': 'noiz', 'quiet': 'kwaiet', 'silent': 'sailent',
-    'after': 'after', 'again': 'ugen', 'hello': 'helo', 'world': 'werld',
-    'wind': 'wind', 'through': 'thru', 'though': 'dho', 'thought': 'thot',
-    'night': 'nait', 'light': 'lait', 'time': 'taim', 'my': 'mai',
-}
-SHAPES = {'X': (0, 1, 0), 'A': (.02, .94, 0), 'B': (.23, 1.02, .5),
-          'C': (.55, 1.02, .2), 'D': (1, .96, .1), 'E': (.42, .90, .05),
-          'F': (.30, .94, 0), 'G': (.15, 1, .7), 'H': (.4, .98, .25)}
-
-def spelling_shapes(word, chinese=False):
-    if not chinese:
-        word = EN_EXCEPTIONS.get(word.lower(), word.lower())
-        word = re.sub(r'e$', '', word) if len(word) > 3 else word
-    units = re.findall(r'zh|ch|sh|th|dh|ng|ee|oo|ou|ai|ei|ao|[a-z]', word)
-    out = []
-    for unit in units:
-        if unit in ('b', 'p', 'm'): shape = 'A'
-        elif unit in ('f', 'v'): shape = 'G'
-        elif unit in ('w', 'u', 'oo', 'ou'): shape = 'F'
-        elif unit in ('o', 'r'): shape = 'E'
-        elif unit in ('a', 'ao'): shape = 'D'
-        elif unit in ('i', 'y', 'ee', 'ei'): shape = 'B'
-        elif unit == 'ai':
-            out.extend(['D', 'B'])
-            continue
-        elif unit == 'e': shape = 'C'
-        elif unit == 'l': shape = 'H'
-        else: shape = 'B'
-        if not out or out[-1] != shape:
-            out.append(shape)
-    return out or ['B']
-
-def plan(text, speed=1.0):
-    text = text.strip()
-    if not text: raise ValueError('Enter a sentence first. 请先输入一句话。')
-    if len(text) > 1000: raise ValueError('Please keep this test under 1,000 characters.')
-    if not isinstance(speed, (int, float)) or not .5 <= speed <= 2:
-        raise ValueError('Speed must be between 0.5 and 2.')
-    tokens = re.findall(r'[\u3400-\u9fff]+|[A-Za-z]+(?:\x27[A-Za-z]+)?|\d+|[^\w\s]', text)
-    timeline, clock, words = [], 0.0, []
-    def add(shape, duration, word_index):
-        nonlocal clock
-        duration /= speed
-        timeline.append({'start': round(clock, 4), 'end': round(clock + duration, 4),
-                         'shape': shape, 'word': word_index})
-        clock += duration
-    add('X', .12, -1)
-    number_words = ['zero','one','two','three','four','five','six','seven','eight','nine']
-    for token in tokens:
-        if re.fullmatch(r'[\u3400-\u9fff]+', token):
-            # Convert phrases together so the OS can disambiguate some polyphonic characters.
-            syllables = romanize(token).split()
-            groups = [(char, syllables[i] if i < len(syllables) else romanize(char), True)
-                      for i, char in enumerate(token)]
-        elif token.isdigit():
-            groups = [(char, number_words[int(char)], False) for char in token]
-        elif re.match(r'[A-Za-z]', token): groups = [(token, token, False)]
-        else:
-            add('X', .38 if token in '.!?。！？' else .19, len(words) - 1)
-            continue
-        for display, pronunciation, chinese in groups:
-            index = len(words)
-            words.append({'text': display, 'pronunciation': pronunciation})
-            shapes = spelling_shapes(pronunciation, chinese)
-            total = .27 if chinese else max(.22, min(.75, len(shapes) * .085))
-            for shape in shapes: add(shape, total / len(shapes), index)
-            add('X', .025, index)
-    if not words: raise ValueError('Use English letters or Chinese characters for this test.')
-    add('X', .3, -1)
-    en = bool(re.search('[A-Za-z]', text))
-    zh = bool(re.search('[\u3400-\u9fff]', text))
-    return {'timeline': timeline, 'duration': round(clock, 4), 'words': words,
-            'language': 'EN + 中文' if en and zh else '中文' if zh else 'EN',
-            'method': 'Approximate text-to-mouth mapping; no audio generated.'}
-
 class Handler(SimpleHTTPRequestHandler):
-    def __init__(self, *args, **kwargs): super().__init__(*args, directory=str(ROOT), **kwargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=str(ROOT), **kwargs)
+
+    def log_message(self, format, *args):
+        if urlsplit(self.path).path not in ('/api/status', '/api/room'):
+            super().log_message(format, *args)
+
+    def end_headers(self):
+        self.send_header('Cache-Control', 'no-store')
+        super().end_headers()
+
+    def respond(self, payload, status=200):
+        encoded = json.dumps(payload, ensure_ascii=False, allow_nan=False).encode()
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Content-Length', str(len(encoded)))
+        self.end_headers()
+        try:
+            self.wfile.write(encoded)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
+    def do_GET(self):
+        path = urlsplit(self.path).path
+        if path == '/api/status':
+            self.respond({'stage': 2, 'engine': self.server.engine.status(), 'archive': self.server.archive.today()})
+        elif path == '/api/events':
+            self.respond({'events': self.server.archive.recent()})
+        elif path in ('/', '/index.html', '/app.js', '/listening.js', '/audio-capture.js', '/listening.css', '/assets/portrait.png'):
+            super().do_GET()
+        else:
+            self.send_error(404)
+
+    def do_HEAD(self):
+        if urlsplit(self.path).path in ('/', '/index.html', '/app.js', '/listening.js', '/audio-capture.js', '/listening.css', '/assets/portrait.png'):
+            super().do_HEAD()
+        else:
+            self.send_error(404)
+
     def do_POST(self):
-        if self.path != '/api/plan':
+        parsed = urlsplit(self.path)
+        origin = self.headers.get('Origin')
+        if origin and urlsplit(origin).netloc != self.headers.get('Host'):
+            self.respond({'error': 'Only the local app can submit recordings.'}, 403)
+            return
+        if parsed.path not in ('/api/plan', '/api/audio', '/api/room', '/api/engine/start'):
             self.send_error(404)
             return
         try:
             size = int(self.headers.get('Content-Length', '0'))
-            if not 0 < size <= 16000: raise ValueError('Invalid request size.')
-            data = json.loads(self.rfile.read(size))
-            result = plan(data['text'], data.get('speed', 1))
-            status = 200
+            maximum = 500000 if parsed.path == '/api/audio' else 16000
+            if not 0 < size <= maximum:
+                raise ValueError('Invalid request size.')
+            payload = self.rfile.read(size)
+            if parsed.path == '/api/audio':
+                self.handle_audio(payload, parse_qs(parsed.query))
+                return
+            data = json.loads(payload)
+            if not isinstance(data, dict):
+                raise ValueError('Expected an object.')
+            if parsed.path == '/api/plan':
+                if not isinstance(data.get('text'), str):
+                    raise ValueError('Text is required.')
+                result = plan(data['text'], data.get('speed', 1))
+            elif parsed.path == '/api/engine/start':
+                self.server.engine.start()
+                result = self.server.engine.status()
+            else:
+                features = {}
+                for key, low, high in [('rms_dbfs', -100, 1), ('peak_dbfs', -100, 1), ('brightness_hz', 0, 24000)]:
+                    value = float(data.get(key, low))
+                    if not math.isfinite(value) or not low <= value <= high:
+                        raise ValueError('Invalid room feature: ' + key)
+                    features[key] = round(value, 2)
+                result = self.server.archive.save({'kind': 'room', 'features': features, 'session': str(data.get('session', ''))[:64]})
+            self.respond(result)
         except (ValueError, KeyError, TypeError) as error:
-            result, status = {'error': str(error)}, 400
-        payload = json.dumps(result, ensure_ascii=False).encode()
-        self.send_response(status)
-        self.send_header('Content-Type', 'application/json; charset=utf-8')
-        self.send_header('Content-Length', str(len(payload)))
-        self.send_header('Cache-Control', 'no-store')
-        self.end_headers()
-        self.wfile.write(payload)
+            self.respond({'error': str(error)}, 400)
+        except Exception as error:
+            print('Request failed:', str(error), flush=True)
+            self.respond({'error': 'Local processing failed. Check the app terminal.'}, 500)
+
+    def handle_audio(self, payload, query):
+        language = query.get('language', ['auto'])[0]
+        source = query.get('source', ['candidate'])[0]
+        if language not in ('auto', 'en', 'zh') or source not in ('candidate', 'ambient', 'file'):
+            raise ValueError('Unsupported language or audio source.')
+        features = audio_features(payload)
+        engine = self.server.engine
+        if not engine.inference_lock.acquire(blocking=False):
+            self.respond({'error': 'Speech worker is busy. This clip was not archived.'}, 429)
+            return
+        try:
+            began = time.monotonic()
+            event = {'source': source, 'session': query.get('session', [''])[0][:64], 'features': features,
+                     'model': 'whisper-small', 'vad': 'silero-v6.2.0', 'language_mode': language}
+            if features['rms_dbfs'] < -65:
+                event.update(kind='silence', text='', language=None)
+            else:
+                try:
+                    result = engine.transcribe(payload, language)
+                    event.update(result, kind='speech' if result['text'] else 'environment')
+                except Exception as error:
+                    event.update(kind='error', text='', error=str(error), language=None)
+            event['processing_seconds'] = round(time.monotonic() - began, 2)
+            saved = self.server.archive.save(event, payload)
+            self.respond(saved, 503 if event['kind'] == 'error' else 200)
+        finally:
+            engine.inference_lock.release()
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--port', type=int, default=8765)
+    parser.add_argument('--port', type=int, default=8766)
+    parser.add_argument('--data-dir', type=Path, default=ROOT / 'data')
     args = parser.parse_args()
-    server = ThreadingHTTPServer(('127.0.0.1', args.port), Handler)
-    print(f'Afterimage is ready: http://127.0.0.1:{server.server_port}', flush=True)
-    try: server.serve_forever()
-    except KeyboardInterrupt: server.server_close()
+    try:
+        server = ThreadingHTTPServer(('127.0.0.1', args.port), Handler)
+    except OSError as error:
+        raise SystemExit(f'Cannot start on port {args.port}: {error}. Close the previous app terminal and try again.')
+    server.engine = WhisperEngine(ROOT)
+    server.archive = AudioArchive(args.data_dir)
+    server.engine.start()
+    signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
+    print(f'Afterimage · Listening: http://127.0.0.1:{server.server_port}', flush=True)
+    print('Microphone starts only when you click Start listening. Archive: ' + str(args.data_dir), flush=True)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+        server.engine.close()

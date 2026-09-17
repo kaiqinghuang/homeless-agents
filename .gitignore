@@ -16,3 +16,8 @@ env/
 .vscode/
 *.swp
 *~
+
+# Local speech dependencies and recordings
+vendor/
+models/
+data/

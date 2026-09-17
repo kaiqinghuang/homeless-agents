@@ -2,7 +2,7 @@
 const $ = id => document.getElementById(id);
 // Slider position is 0–100, with the preferred starting value exactly at 50.
 const sliderRanges = {
- speed: {min:.15, center:.60, max:1.05},
+ speed: {min:.15, center:.17, max:1.05},
  amount: {min:0, center:.30, max:.90}
 };
 function sliderValue(id){
@@ -171,12 +171,14 @@ async function play(){
  try{
   const response=await fetch('/api/plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:$('text').value,speed:1})});
   const plan=await response.json();if(!response.ok)throw new Error(plan.error||'Could not prepare movement.');if(request!==state.request)return;
+  if(plan.method!=='phonemes-v1')throw new Error('Restart Start.command to load the new phoneme engine. / 请重启 Start.command，启用新版音素口型。');
   // The server supplies the base timeline; pace is applied locally so slower
   // settings work without restarting an already-running server.
   for(const cue of plan.timeline){cue.start/=pace;cue.end/=pace;}
   plan.duration/=pace;
-  state.plan=plan;$('readout').replaceChildren(...plan.words.map(word=>{const span=document.createElement('span');span.textContent=word.text+(/[A-Za-z0-9]/.test(word.text)?' ':'');return span;}));lastWord=-2;
-  $('meta').textContent=plan.language+' · '+plan.duration.toFixed(1)+' SEC';state.start=performance.now();state.playing=true;$('play').textContent='Restart';$('stop').disabled=false;
+  state.plan=plan;$('readout').replaceChildren(...plan.words.map(word=>{const span=document.createElement('span');span.textContent=word.text;span.title=word.phonemes.join(' ');return span;}));lastWord=-2;
+  $('pronunciation').replaceChildren(...plan.words.map(word=>{const row=document.createElement('div');row.textContent=word.text.trim()+'  / '+word.phonemes.join(' ')+' /';return row;}));
+  $('meta').textContent='PHONEMES · '+plan.language+' · '+plan.duration.toFixed(1)+' SEC';state.start=performance.now();state.playing=true;$('play').textContent='Restart';$('stop').disabled=false;
  }catch(error){if(request!==state.request)return;$('error').textContent=error.message;$('status').textContent='Waiting for a sentence';$('stop').disabled=true;}
  finally{if(request===state.request)$('play').disabled=!state.ready;}
 }
@@ -193,3 +195,13 @@ $('fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenEle
 $('text').addEventListener('keydown',event=>{if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();if(state.ready)play();}});
 canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();state.ready=false;stop();$('error').textContent='Graphics context lost. Reload the page to restore the portrait.';});
 const portrait=new Image();portrait.onload=()=>{try{setup(portrait);}catch(error){$('error').textContent=error.message;$('status').textContent='Could not render portrait';}};portrait.onerror=()=>{$('error').textContent='Portrait image could not be loaded.';};portrait.src='assets/portrait.png';
+
+// The listening stage may echo a transcript; it is not a generated AI reply.
+window.afterimageMotion = {
+ async echo(text){
+  if(!state.ready||state.playing||$('play').disabled)return false;
+  $('text').value=text.slice(0,1000);
+  await play();
+  return state.playing;
+ }
+};
