@@ -39,3 +39,9 @@ Planned reply policy: English speech → English reply; Mandarin speech → Mand
 
 Files: `server.py` creates the timeline; `app.js` renders and plays it; `index.html` is the test interface; `assets/portrait.png` is an unchanged copy of the supplied image.
 # homeless-agents
+
+## Mouth guide overlay
+
+Toggle **Guide points / 定位点** above the image to show black circular guides. It is off by default and works in the full image, face close-up, and fullscreen view. The guides show the fixed mouth center, moving corners and opening contour, plus four surrounding skin anchors initialized at the falloff scales. These use the renderer's shared manual calibration. They are not automatically detected facial landmarks; the surrounding anchors do not mark a hard boundary. The overlay does not alter mouth motion.
+
+The overlay also includes four decorative points on each cheek; these follow the exact skin deformation every frame without driving it. All guide dots are rendered at 75% of the original diameter.
