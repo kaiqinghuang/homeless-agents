@@ -5,11 +5,21 @@ __pycache__/
 .venv/
 venv/
 env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+npm-debug.log*
 
 # macOS
 .DS_Store
 .AppleDouble
 .LSOverride
+._*
 
 # Editors
 .idea/
@@ -17,7 +27,26 @@ env/
 *.swp
 *~
 
-# Local speech dependencies and recordings
+# Secrets if added later
+.env
+.env.*
+!.env.example
+
+# Local speech dependencies, model weights, and the listening archive
 vendor/
 models/
 data/
+
+# Same artifacts if they land outside those folders
+*.part
+*.gguf
+*.ggml
+ggml-*.bin
+*.wav
+*.jsonl
+*.log
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+*.db

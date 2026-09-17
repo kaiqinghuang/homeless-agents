@@ -10,18 +10,17 @@
 </style>
 </head>
 <body>
-<header><div><div class="brand">AFTERIMAGE</div><div class="edition">An ongoing listening experiment</div></div><div class="badge"><span class="dot"></span>LOCAL · LISTENING STUDY 02</div></header>
+<header><div><div class="brand">AFTERIMAGE</div><div class="edition">An ongoing listening experiment</div></div><div class="badge"><span class="dot"></span>LOCAL · RESPONSE STUDY 03</div></header>
 <main>
 <section aria-label="Portrait preview">
 <div class="stage-head"><span class="eyebrow">The face / 面孔</span><div class="stage-actions"><button id="guides" aria-pressed="false" aria-controls="portrait guide-note">Guide points / 定位点</button><button id="zoom" aria-pressed="false">Inspect face</button><button id="fullscreen">Full screen</button></div></div>
 <div class="stage" id="stage"><canvas id="portrait" width="1091" height="615" role="img" aria-label="The original portrait with animated lips; no audio is played."></canvas></div>
-<p class="note" id="guide-note" hidden>Manual mouth guides + skin-following cheek points.<br>手动嘴部参考点与脸颊装饰点；脸颊点跟随皮肤变形，不驱动变形。</p>
+<p class="note" id="guide-note" hidden>Guides follow the face. / 定位点跟随面部运动。</p>
 <div class="under-stage"><span class="state" id="status" aria-live="polite">Loading portrait…</span><span id="meta">TEXT → MOUTH MOTION</span></div>
 <div class="track" role="progressbar" aria-label="Playback progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="progress"></span></div>
 <div class="readout" id="readout" aria-label="Playback text">The room is quiet. The face is waiting.</div>
-<p class="note">A silent movement study. The surrounding image stays still.<br>无声口型实验 · 英文为主，支持中文与混合输入。</p>
 <section class="listening" aria-label="Local listening">
-<div class="listen-heading"><div><h2>Let the room in.</h2><p class="note">Sound stays on this Mac. / 声音留在本机。</p></div><span class="note" id="engine-state" aria-live="polite">Connecting to local speech model…</span></div>
+<div class="listen-heading"><div><h2>Let the room in.</h2></div><span class="note" id="engine-state" aria-live="polite">Connecting to local speech model…</span></div>
 <div class="listen-controls">
 <label for="microphone">Microphone / 麦克风<select id="microphone"><option value="builtin">Mac built-in / 电脑内置（默认）</option></select></label>
 <label for="speech-language">Speech language / 识别语言<select id="speech-language"><option value="auto">Auto · English / 中文</option><option value="en">English</option><option value="zh">中文 / Mandarin</option></select></label>
@@ -30,15 +29,24 @@
 <p class="note" id="active-input" aria-live="polite">Active input / 正在使用：—</p>
 <div class="level-line"><meter id="input-level" min="-100" max="0" low="-50" high="-8" optimum="-25" value="-100" aria-label="Microphone input level in dBFS"></meter><output id="level-value">— dBFS</output></div>
 <div class="listen-state"><span><span class="recording-dot" id="recording-dot" hidden></span><span id="mic-state" aria-live="polite">Microphone off / 麦克风已关闭</span></span><span id="recognition-state" aria-live="polite"></span></div>
-<label class="echo-option"><input type="checkbox" id="echo-speech" checked>Echo recognized speech through the face / 用口型复述识别文字</label>
-<p class="note">Echo is a connection test, not an AI reply. / 复述用于测试链路，尚不是 AI 回答。<br>Local clips + room observations are saved while listening. / 开启后在本地保存声音片段与环境记录。</p>
+<label class="block" for="response-mode">Response mode / 回应模式</label>
+<select id="response-mode"><option value="ai">Autonomous response / 自主回应</option><option value="echo">Echo transcript / 复述文字</option><option value="collect">Collect only / 只收集</option></select>
+<div class="agent-panel">
+<div class="listen-heading"><h2>A reason to speak.</h2><span class="note" id="agent-model">Connecting to local model…</span></div>
+<div class="setting" hidden><label for="response-threshold">Response threshold <span class="cn">回应阈值</span><output id="threshold-value">0.60</output></label><input id="response-threshold" type="range" min="0" max="100" value="60"><p class="note">Higher = fewer responses. / 越高，越不容易回应。</p></div>
+<p id="decision-state" class="note" aria-live="polite">Listening for a reason to respond / 等待值得回应的声音</p>
+<div id="agent-reply" class="agent-reply" aria-live="polite">—</div>
+<div class="listen-buttons"><button id="agent-cancel" disabled>Stop response / 停止回应</button><button id="agent-retry" hidden>Reconnect model / 重连模型</button></div>
+<details><summary>Try a message / 文字测试</summary><label class="block" for="agent-input">A message for the model / 给模型的话</label><textarea class="text-input" id="agent-input" maxlength="500">Are you still here?</textarea><button id="agent-test" disabled>Let it decide / 让它决定</button></details>
+</div>
+<p class="note">Recordings stay on this Mac. / 录音保存在本机。</p>
 <p class="listen-error" id="listen-error" role="alert"></p>
 <ul class="event-list" id="sound-events" aria-label="Recent sound events"><li class="note">No sounds collected yet. / 尚未收集声音。</li></ul>
-<p class="note archive-note"><span id="archive-count"></span><br>Archive / 存档：data/YYYY-MM-DD · WAV + JSONL + SQLite</p>
+<p class="note archive-note"><span id="archive-count"></span></p>
 </section>
 </section>
 <aside class="sidebar">
-<h1>Give it a sentence.</h1><p class="intro">Watch the words become movement.<br><span class="cn">输入一句话，观察口型。</span></p>
+<h1>Give it a sentence.</h1>
 <label class="block" for="text">Words to mouth <span class="cn">/ 播放文字</span></label>
 <textarea class="text-input" id="text" maxlength="1000" spellcheck="false">I can still hear the room after it falls silent.</textarea>
 <div class="examples"><button id="example-en">English example</button><button id="example-zh">中文示例</button></div>
@@ -46,12 +54,12 @@
 <div class="error" id="error" role="alert"></div>
 <div class="setting"><label for="speed">Pace <span class="cn">语速</span><output id="speed-value">0.60×</output></label><input type="range" id="speed" min="0" max="100" step="1" value="50" aria-valuetext="0.60×"></div>
 <div class="setting"><label for="amount">Mouth movement <span class="cn">张嘴幅度</span><output id="amount-value">0.30×</output></label><input type="range" id="amount" min="0" max="100" step="1" value="50" aria-valuetext="0.30×"></div>
-<details><summary>Inspect individual mouth shapes / 检查嘴形</summary><div class="shapes" id="shapes"></div><p class="note">Select a shape to hold it. Choose Rest to release.<br>点击保持该嘴形；Rest 恢复闭嘴。</p></details>
-<details><summary>Inspect pronunciation / 检查发音</summary><div class="note" id="pronunciation">Play a sentence to see its phonemes.<br>播放后可查看各词的发音音素。</div><p class="note">Local pronunciation → timed mouth shapes. No sound is played.<br>本地发音驱动口型，保持无声；嘴形仍为简化表现。</p></details>
-<p class="note">Step 02 · Listening + silent echo.<br>Generated replies and daily learning come next.<br><span class="cn">已接入本地收音与识别，下一步接 AI 回答。</span></p>
+<details><summary>Inspect individual mouth shapes / 检查嘴形</summary><div class="shapes" id="shapes"></div><p class="note">Rest = relaxed mouth / 恢复闭嘴</p></details>
+<details hidden><summary>Inspect pronunciation / 检查发音</summary><div class="note" id="pronunciation">Play a sentence to see its phonemes.<br>播放后可查看各词的发音音素。</div><p class="note">Local pronunciation → timed mouth shapes. No sound is played.<br>本地发音驱动口型，保持无声；嘴形仍为简化表现。</p></details>
 </aside>
 </main>
-<footer><span>01 Motion &nbsp; / &nbsp; 02 Listening &nbsp; / &nbsp; 03 Daily learning</span><span>Offline · Original image + local deformation</span></footer>
+<footer><span>Afterimage · Local listening</span><span>Silent · Offline</span></footer>
 <script src="app.js"></script>
+<script src="agent.js"></script>
 <script src="listening.js"></script>
 </body></html>

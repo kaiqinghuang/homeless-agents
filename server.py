@@ -8,6 +8,7 @@ import signal
 from urllib.parse import urlsplit, parse_qs
 from audio_runtime import AudioArchive, WhisperEngine, audio_features
 from mouth_plan import plan
+from agent_runtime import LocalAgent
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -38,16 +39,18 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         path = urlsplit(self.path).path
         if path == '/api/status':
-            self.respond({'stage': 2, 'engine': self.server.engine.status(), 'archive': self.server.archive.today()})
+            self.respond({'stage': 3, 'engine': self.server.engine.status(), 'agent': self.server.agent.status(), 'archive': self.server.archive.today()})
         elif path == '/api/events':
             self.respond({'events': self.server.archive.recent()})
-        elif path in ('/', '/index.html', '/app.js', '/listening.js', '/audio-capture.js', '/listening.css', '/assets/portrait.png'):
+        elif path == '/api/decisions':
+            self.respond({'decisions': self.server.archive.decisions()})
+        elif path in ('/', '/index.html', '/app.js', '/agent.js', '/listening.js', '/audio-capture.js', '/listening.css', '/assets/portrait.png'):
             super().do_GET()
         else:
             self.send_error(404)
 
     def do_HEAD(self):
-        if urlsplit(self.path).path in ('/', '/index.html', '/app.js', '/listening.js', '/audio-capture.js', '/listening.css', '/assets/portrait.png'):
+        if urlsplit(self.path).path in ('/', '/index.html', '/app.js', '/agent.js', '/listening.js', '/audio-capture.js', '/listening.css', '/assets/portrait.png'):
             super().do_HEAD()
         else:
             self.send_error(404)
@@ -58,7 +61,7 @@ class Handler(SimpleHTTPRequestHandler):
         if origin and urlsplit(origin).netloc != self.headers.get('Host'):
             self.respond({'error': 'Only the local app can submit recordings.'}, 403)
             return
-        if parsed.path not in ('/api/plan', '/api/audio', '/api/room', '/api/engine/start'):
+        if parsed.path not in ('/api/plan', '/api/audio', '/api/room', '/api/engine/start', '/api/agent/start', '/api/agent/decide', '/api/agent/test'):
             self.send_error(404)
             return
         try:
@@ -80,6 +83,24 @@ class Handler(SimpleHTTPRequestHandler):
             elif parsed.path == '/api/engine/start':
                 self.server.engine.start()
                 result = self.server.engine.status()
+            elif parsed.path == '/api/agent/start':
+                self.server.agent.start()
+                result = self.server.agent.status()
+            elif parsed.path in ('/api/agent/decide', '/api/agent/test'):
+                if parsed.path == '/api/agent/test':
+                    phrase = data.get('text')
+                    if not isinstance(phrase, str) or not 1 <= len(phrase.strip()) <= 500:
+                        raise ValueError('Enter a test message of 1–500 characters.')
+                    event = self.server.archive.save({'kind': 'text_input', 'source': 'text-test',
+                                                     'text': phrase.strip(), 'session': 'text-test'})
+                else:
+                    event_id = data.get('event_id')
+                    if not isinstance(event_id, str):
+                        raise ValueError('An archived sound event ID is required.')
+                    event = self.server.archive.get(event_id)
+                    if not event:
+                        raise ValueError('Sound event not found.')
+                result = self.server.agent.decide(event, data.get('threshold'))
             else:
                 features = {}
                 for key, low, high in [('rms_dbfs', -100, 1), ('peak_dbfs', -100, 1), ('brightness_hz', 0, 24000)]:
@@ -135,7 +156,9 @@ if __name__ == '__main__':
         raise SystemExit(f'Cannot start on port {args.port}: {error}. Close the previous app terminal and try again.')
     server.engine = WhisperEngine(ROOT)
     server.archive = AudioArchive(args.data_dir)
+    server.agent = LocalAgent(ROOT, server.archive)
     server.engine.start()
+    server.agent.start()
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
     print(f'Afterimage · Listening: http://127.0.0.1:{server.server_port}', flush=True)
     print('Microphone starts only when you click Start listening. Archive: ' + str(args.data_dir), flush=True)
@@ -146,3 +169,4 @@ if __name__ == '__main__':
     finally:
         server.server_close()
         server.engine.close()
+        server.agent.close()

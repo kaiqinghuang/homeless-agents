@@ -24,7 +24,8 @@
    const response=await fetch('/api/status');
    if(!response.ok)throw Error('Restart Start.command once to enable the new listening service.');
    const data=await response.json();
-   if(data.stage!==2)throw Error('Restart Start.command to load the listening service.');
+   if(data.stage!==3)throw Error('Restart Start.command to load the response service.');
+   window.afterimageAgent?.status(data.agent);
    session.ready=data.engine.state==='ready';
    text('engine-state',session.ready?'Whisper small · '+data.engine.backend+' · 本地':data.engine.state==='loading'?'Loading local speech model…':data.engine.error||'Speech model unavailable');
    el('engine-state').classList.toggle('engine-ready',session.ready);
@@ -116,7 +117,8 @@
    if(!response.ok){if(result.id){session.events.unshift(result);renderEvents();}throw Error(result.error||'Local recognition failed.');}
    session.events.unshift(result);session.events=session.events.slice(0,20);renderEvents();
    text('recognition-state',result.kind==='speech'?'Heard '+(result.language||'speech').toUpperCase()+' · '+result.processing_seconds+' s':'Environment captured · 环境声已记录');
-   if(result.text&&el('echo-speech').checked&&['en','zh'].includes(result.language)){
+   window.afterimageAgent?.observe(result);
+   if(result.text&&window.afterimageAgent?.mode()==='echo'&&['en','zh'].includes(result.language)){
     const played=await window.afterimageMotion?.echo(result.text);
     if(!played)text('recognition-state','Speech saved · face is busy / 已记录，口型播放中');
    }
@@ -187,6 +189,7 @@
   finally{if(generation===session.generation){session.starting=false;buttons();}}
  }
  async function stop(){
+  window.afterimageAgent?.stop();
   session.generation++;session.active=false;session.starting=false;session.queue=[];session.clip=null;session.ring=[];
   if(session.stream)session.stream.getTracks().forEach(t=>t.stop());session.stream=null;
   if(session.node){session.node.port.onmessage=null;session.node.disconnect();session.node=null;}

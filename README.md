@@ -1,6 +1,6 @@
-# Afterimage · Step 02
+# Afterimage · Step 03
 
-A local listening installation: microphone → environmental observations + bilingual speech recognition → optional silent echo through the supplied portrait.
+A local listening installation: microphone → environmental observations + bilingual speech recognition → local model decides silence or a brief reply → phoneme-driven silent portrait.
 
 ## Run
 
@@ -23,20 +23,30 @@ Command-Enter plays the current text. Stop smoothly returns the mouth to rest. F
 
 - Converts whole English and Mandarin phrases to pronunciation phonemes with eSpeak NG, then maps those phonemes to the existing nine mouth poses. English uses the en-US pronunciation voice. Script changes select the voice for mixed-language text.
 - Uses phoneme event timestamps from local synthesis, rather than equal time per letter. Diphthongs move through multiple poses (e.g. /eɪ/ → EH → EE). Punctuation pauses and all original caption text are preserved. Mandarin dictionary phrases can share one highlight across several characters.
-- Exposes the generated IPA in **Inspect pronunciation / 检查发音** and on hover over the playback words. The playback label includes **PHONEMES**; an old server is rejected with a restart prompt instead of silently using spelling rules.
+- Exposes the generated IPA on hover over the playback words. The **Inspect pronunciation / 检查发音** panel is retained but hidden in the simplified interface. The playback label includes **PHONEMES**; an old server is rejected with a restart prompt instead of silently using spelling rules.
 - Pronunciation is still imperfect for names, heteronyms such as past-tense “read,” and some Chinese polyphonic words. The nine visual poses are approximate; this is not a full facial articulator or alignment to incoming microphone audio. Numbers follow the pronunciation engine and the surrounding language, rather than being hard-coded English digits.
 - Deforms the original lip texture locally using WebGL, with a procedural dark mouth interior. This tests motion and timing; it is not final photorealistic mouth artwork.
 - Leaves the rest of the original image still. No AI-generated replacement images are used.
 
-## Not connected yet
+## Local responses
 
-Generated replies, persistent model memory, and LoRA training are future steps. The face currently echoes recognized speech or manually entered text; it does not yet generate AI answers.
+The **Autonomous response / 自主回应** mode is now the default. It sends accepted speech transcripts or measured environmental features to the locally installed **Qwen3.5 9B** via Ollama on `127.0.0.1:11434`. English inputs request English replies; Mandarin inputs request Chinese replies; non-speech environment requests English. Mixed speech uses Whisper's detected language; a text test uses a simple predominant-script rule.
 
-Planned reply policy: English speech → English reply; Mandarin speech → Mandarin reply; non-speech environment → English by default. Mixed-language utterances follow the predominant language, with a later manual override.
+Open the installed Ollama app if it is not running. `Start.command` will attempt a local `ollama serve` process if no server is available; that owned process disables cloud features. An existing Ollama service is left running and its settings are not changed. The app accepts only the named locally installed GGUF model and rejects remote-model metadata; no cloud model or fallback is used. On another machine, install Ollama from its official site and run `ollama pull qwen3.5:9b` once. This Mac already has that model, so no language-model download was needed.
+
+The model returns a structured respond/silence decision, a salience score, and a short reply. The response threshold defaults to 0.60. Its slider is hidden in the simplified interface; edit `threshold` in `agent_config.json` and restart the server to change it. Higher values produce fewer replies. The score is a model judgment, not a calibrated probability. Very quiet clips are gated without an LLM call. There is a 12-second minimum interval after a generated live reply, and environmental inputs are evaluated at most once every 45 seconds. The interface distinguishes model silence, threshold gating, cooldown, and errors.
+
+The model gets up to four recent generated responses from the same listening session and prompt version as context. The default prompt contains functional instructions only: response/silence decisions, language, output format, and a short playback-length limit. It specifies no character identity or poetic style. Earlier prompt versions remain archived but are excluded from current context. These are explicitly labeled as generated; they may not all have been played. No long-term learned memory or model-weight updates occur. Environmental input is volume/peak/texture/zero-crossing measurements, not raw audio understanding or identified sound-source labels.
+
+Under **Try a message / 文字测试**, enter English or Chinese and click **Let it decide** to exercise the same model-to-mouth path without enabling the microphone. These entries and decisions carry `source: text-test`, skip the live cooldown, and are excluded from listening context. The manual **Words to mouth** player continues to animate exactly the text entered, without calling the LLM.
+
+Switch to **Echo transcript / 复述文字** for the earlier recognition test, or **Collect only / 只收集** to archive sounds without automatic animation. **Stop response** cancels the browser's pending request and automatic mouth playback; **Stop listening** also does this and releases the microphone. A model request already accepted by Ollama can still finish and be archived, but its late result is not played.
+
+Only one model request is sent at a time by a page. While the face is busy, the newest sound event replaces the previous pending one; inputs waiting longer than 30 seconds are discarded from the response queue but remain in the sound archive. A reply generated while someone manually starts the mouth player is saved rather than interrupting that playback. Stopping or changing mode discards pending responses.
 
 ## 下一步
 
-点击 Start listening 后授权麦克风，开始收音。英文保持英文、中文保持中文；Auto 对很短的语句可能判断不准，可以手动选择 English 或中文。当前脸部复述识别出的文字，并非 AI 回答。下一步接入本地语言模型的沉默／回应决策。
+当前已接通本地模型自主回应。下一阶段是每日训练数据整理、审核与可回退的适配器微调；目前没有启用自动训练或修改模型权重。
 
 Files: `mouth_plan.py` creates the timeline via the isolated `phoneme_engine.py` worker; `server.py` serves the local API; `app.js` renders and plays it; `index.html` is the test interface; `assets/portrait.png` is an unchanged copy of the supplied image.
 # homeless-agents
@@ -57,7 +67,7 @@ Both sliders start in the middle. Pace runs from **0.15× → 0.17× (current de
 2. The microphone defaults to **Mac built-in**, selected by its device ID rather than the OS default (which can be an iPhone Continuity mic). You can choose an external USB microphone; your selection is remembered in this browser. A missing selected device prompts you to choose again, without silently falling back. Choose Auto, English, or Mandarin for recognition.
 3. Click **Start listening** and grant the browser microphone permission. **Active input** shows the actual track's device name. If the browser hides device names before its first permission grant, set macOS **System Settings → Sound → Input → MacBook Microphone**, explicitly select **System default** in the page, and start once to grant access. Then stop and select **Mac built-in**. Noise suppression, echo cancellation, and auto gain are requested off to preserve ambient sound; actual hardware/browser support may vary.
 4. Speak near the microphone, then pause for about a second. The activity gate sends candidate utterances (up to 10 seconds) to Silero VAD and Whisper. Audio is transcribed, never translated to English.
-5. The checked **Echo recognized speech through the face** option tests the full path. It starts motion only when the face is idle; later transcripts are still saved if the face is busy. Uncheck it to collect sound without moving the mouth.
+5. In **Autonomous response**, the model decides whether to reply; the resulting text drives the face. **Echo transcript** replays the recognized text only when the face is idle. **Collect only** keeps the face still. These controls do not disable local recording.
 6. **Stop listening** stops microphone tracks, clears pending browser clips and aborts its request. A clip already accepted by the local server may finish processing and be archived. An unfinished current utterance is discarded.
 7. **Test audio file** accepts a local 0.4–15-second audio file and sends it through the same local recognizer and echo path. This does not turn on the microphone. Test files are archived too.
 
@@ -94,3 +104,11 @@ Pinned [eSpeak NG 1.52.0](https://github.com/espeak-ng/espeak-ng/tree/1.52.0), r
 Each uncached phrase is processed in a separate Python worker using the native synchronous-retrieval API, so simultaneous browser requests cannot mix voices or callbacks. Preparation is bounded by a 20-second timeout and 1,000-character input limit. The server caches up to 64 recent pronunciation results in memory. Missing dependencies cause an explicit error; there is no spelling-based fallback. The visual pace slider still scales both mouth cues and word highlights together.
 
 Run `python3 -m unittest -v test_mouth_plan.py` for pronunciation, bilingual text preservation, event timing, concurrent requests, pace, and validation checks. Frontend playback checks are in `test_playback.cjs` and can be run with Node.js.
+
+## Response configuration and records
+
+Edit `agent_prompt.txt` to change the functional response instructions and `agent_config.json` for model name, default threshold, interval, temperature, and generation budget. Restart the local server after editing. These are prompt/runtime settings, **not fine-tuning**. The model identity is `qwen3.5:9b`, local digest `6488c96fa5faab64bb65cbd30d4289e20e6130ef535a93ef9a49f42eda893ea7` on this Mac; each generated decision records the currently verified digest.
+
+Decisions are appended to the existing daily JSONL and SQLite archive, linked to a sound/input event by `source_id`. They record action, gate/model origin, language, reply, salience, threshold, model digest, prompt hash, generation options, and elapsed time. Repeated requests for the same source return the archived decision rather than generating duplicates. A decision records generated text, not proof of completed mouth playback. `/api/decisions` exposes the latest decisions to the local app. Raw data folders, prompts, config and model files remain excluded from static serving.
+
+Validation: `python3 -m unittest -v test_agent.py test_mouth_plan.py`, `node test_agent_ui.cjs`, and `node test_playback.cjs`. A real local model smoke test returned English and Chinese replies to corresponding questions, and silence for steady ambient measurements. These smoke-test archives live outside production data. On this run, warm model decisions took about 2.5–2.9 seconds; cold/model-context loading was about 7 seconds. Actual microphone segmentation, Whisper, mouth-plan generation, and the chosen playback pace add latency.

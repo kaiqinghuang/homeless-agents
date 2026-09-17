@@ -196,12 +196,17 @@ $('text').addEventListener('keydown',event=>{if(event.key==='Enter'&&(event.meta
 canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();state.ready=false;stop();$('error').textContent='Graphics context lost. Reload the page to restore the portrait.';});
 const portrait=new Image();portrait.onload=()=>{try{setup(portrait);}catch(error){$('error').textContent=error.message;$('status').textContent='Could not render portrait';}};portrait.onerror=()=>{$('error').textContent='Portrait image could not be loaded.';};portrait.src='assets/portrait.png';
 
-// The listening stage may echo a transcript; it is not a generated AI reply.
+// Both generated replies and the optional transcript echo use the same player.
+let automaticRequest=null;
 window.afterimageMotion = {
+ isBusy(){return !state.ready||state.playing||$('play').disabled;},
+ isAutomatic(){return automaticRequest===state.request&&(state.playing||$('play').disabled);},
+ cancelEcho(){if(automaticRequest===state.request)stop();automaticRequest=null;},
  async echo(text){
   if(!state.ready||state.playing||$('play').disabled)return false;
   $('text').value=text.slice(0,1000);
-  await play();
-  return state.playing;
+  const pending=play();automaticRequest=state.request;
+  await pending;
+  return state.playing&&automaticRequest===state.request;
  }
 };

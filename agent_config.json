@@ -1,0 +1,9 @@
+{
+  "model": "qwen3.5:9b",
+  "threshold": 0.6,
+  "cooldown_seconds": 12,
+  "environment_interval_seconds": 45,
+  "temperature": 0.7,
+  "num_ctx": 4096,
+  "num_predict": 180
+}

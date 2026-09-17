@@ -48,8 +48,39 @@ class AudioArchive:
 
     def recent(self):
         with self.connect() as db:
-            rows = db.execute("SELECT payload FROM events WHERE kind != 'room' ORDER BY created_at DESC LIMIT 20").fetchall()
+            rows = db.execute("SELECT payload FROM events WHERE kind IN ('speech','environment','silence','error') ORDER BY created_at DESC LIMIT 20").fetchall()
         return [json.loads(row[0]) for row in rows]
+
+    def get(self, event_id):
+        with self.connect() as db:
+            row = db.execute('SELECT payload FROM events WHERE id=?', (event_id,)).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def decisions(self):
+        with self.connect() as db:
+            rows = db.execute("SELECT payload FROM events WHERE kind='decision' ORDER BY created_at DESC LIMIT 20").fetchall()
+        return [json.loads(row[0]) for row in rows]
+
+    def decision_for(self, source_id):
+        with self.connect() as db:
+            row = db.execute("SELECT payload FROM events WHERE kind='decision' AND json_extract(payload, '$.source_id')=? ORDER BY created_at DESC LIMIT 1", (source_id,)).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def agent_memory(self, session, prompt_version=None):
+        if not session:
+            return []
+        memory = []
+        for decision in self.decisions():
+            if prompt_version is not None and decision.get('prompt_version') != prompt_version:
+                continue
+            if decision.get('session') != session or decision.get('source') == 'text-test' or decision['action'] != 'speak':
+                continue
+            source = self.get(decision['source_id'])
+            if source:
+                memory.append({'heard': source.get('text', ''), 'generated_reply': decision['text']})
+            if len(memory) == 4:
+                break
+        return memory[::-1]
 
     def today(self):
         day = dt.datetime.now().astimezone().date().isoformat()
