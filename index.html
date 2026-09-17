@@ -27,8 +27,8 @@
 <div class="examples"><button id="example-en">English example</button><button id="example-zh">中文示例</button></div>
 <div class="actions"><button class="primary" id="play" disabled>Play sentence</button><button id="stop" disabled>Stop</button></div>
 <div class="error" id="error" role="alert"></div>
-<div class="setting"><label for="speed">Pace <span class="cn">语速</span><output id="speed-value">1.00×</output></label><input type="range" id="speed" min="0.6" max="1.5" step="0.05" value="1"></div>
-<div class="setting"><label for="amount">Mouth movement <span class="cn">张嘴幅度</span><output id="amount-value">0.85×</output></label><input type="range" id="amount" min="0.3" max="1.5" step="0.05" value="0.85"></div>
+<div class="setting"><label for="speed">Pace <span class="cn">语速</span><output id="speed-value">0.60×</output></label><input type="range" id="speed" min="0" max="100" step="1" value="50" aria-valuetext="0.60×"></div>
+<div class="setting"><label for="amount">Mouth movement <span class="cn">张嘴幅度</span><output id="amount-value">0.30×</output></label><input type="range" id="amount" min="0" max="100" step="1" value="50" aria-valuetext="0.30×"></div>
 <details><summary>Inspect individual mouth shapes / 检查嘴形</summary><div class="shapes" id="shapes"></div><p class="note">Select a shape to hold it. Choose Rest to release.<br>点击保持该嘴形；Rest 恢复闭嘴。</p></details>
 <p class="note">Step 01 · Text-driven motion only.<br>No microphone or language model connected yet.<br><span class="cn">当前为口型原型，尚未接入收音或 AI 回答。</span></p>
 </aside>

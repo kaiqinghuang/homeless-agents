@@ -45,3 +45,7 @@ Files: `server.py` creates the timeline; `app.js` renders and plays it; `index.h
 Toggle **Guide points / 定位点** above the image to show black circular guides. It is off by default and works in the full image, face close-up, and fullscreen view. The guides show the fixed mouth center, moving corners and opening contour, plus four surrounding skin anchors initialized at the falloff scales. These use the renderer's shared manual calibration. They are not automatically detected facial landmarks; the surrounding anchors do not mark a hard boundary. The overlay does not alter mouth motion.
 
 The overlay also includes four decorative points on each cheek; these follow the exact skin deformation every frame without driving it. All guide dots are rendered at 75% of the original diameter.
+
+## Slider defaults and ranges
+
+Both sliders start in the middle. Pace runs from **0.15× → 0.60× (default) → 1.05×**. Mouth opening runs from **0 → 0.30× (default) → 0.90×**, with a separate linear scale on each half so the preferred value stays centered. The slower/smaller side extends below the previous minimum; the faster/larger side retains half of the previous range. Opening is clamped at zero rather than becoming negative. Pace scales the returned base timeline in the browser, so these changes require only a page refresh, not a server restart.

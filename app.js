@@ -1,8 +1,24 @@
 'use strict';
 const $ = id => document.getElementById(id);
+// Slider position is 0–100, with the preferred starting value exactly at 50.
+const sliderRanges = {
+ speed: {min:.15, center:.60, max:1.05},
+ amount: {min:0, center:.30, max:.90}
+};
+function sliderValue(id){
+ const range=sliderRanges[id], position=Number($(id).value)/100;
+ return position<=.5
+  ? range.min+(range.center-range.min)*position*2
+  : range.center+(range.max-range.center)*(position-.5)*2;
+}
+function updateSliderLabel(id){
+ const label=sliderValue(id).toFixed(2)+'×';
+ $(id+'-value').textContent=label;
+ $(id).setAttribute('aria-valuetext',label);
+}
 const canvas = $('portrait');
 const gl = canvas.getContext('webgl', {alpha:false, antialias:false, preserveDrawingBuffer:true});
-const shapes = {X:[0,1,0], A:[.02,.94,0], B:[.23,1.02,.5], C:[.55,1.02,.2], D:[1,.96,.1], E:[.42,.90,.05], F:[.30,.86,0], G:[.15,1,.7], H:[.4,.98,.25]};
+const shapes = {X:[0,1,0], A:[.02,.94,0], B:[.23,1.02,.5], C:[.55,1.02,.2], D:[1,.96,.1], E:[.42,.90,.05], F:[.30,.94,0], G:[.15,1,.7], H:[.4,.98,.25]};
 // Shared calibration: these are hand-set image coordinates, not detected landmarks.
 const mouthGeometry = {x:548, y:365, halfWidth:25, falloffX:43, falloffY:32, curve:3.1, opening:15};
 // Decorative cheek anchors in the original image; they follow the skin warp without driving it.
@@ -72,7 +88,7 @@ function setup(image){
 // Sample the same opening contour that the shader draws. Solve the horizontal
 // inverse warp so the circular guides follow the lips rather than float above them.
 function updateGuides(){
- const g=mouthGeometry, opening=state.current[0]*Number($('amount').value)*g.opening;
+ const g=mouthGeometry, opening=state.current[0]*sliderValue('amount')*g.opening;
  const points=[[g.x,g.y]];
  // Forward-map a point on the original skin through the exact inverse texture
  // mapping used by the shader. Recompute from the smoothed pose every frame.
@@ -115,7 +131,7 @@ function updateGuides(){
  return guidePoints;
 }
 function draw(){
- gl.uniform3fv(uniforms.mouth,state.current);gl.uniform1f(uniforms.amount,Number($('amount').value));
+ gl.uniform3fv(uniforms.mouth,state.current);gl.uniform1f(uniforms.amount,sliderValue('amount'));
  // Preserve the original aspect ratio while zooming into the face.
  const crop=state.zoom?[.287,.25,.43,.43]:[0,0,1,1];
  gl.uniform4fv(uniforms.crop,crop);
@@ -150,10 +166,15 @@ function highlight(index){if(index===lastWord)return;lastWord=index;[...$('reado
 function resetPlayback(){state.playing=false;state.hold='X';state.elapsed=0;lastCue=-1;highlight(-1);setProgress(0);$('stop').disabled=true;$('play').textContent='Play sentence';document.querySelectorAll('[data-shape]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.shape==='X')));}
 function stop(){state.request++;resetPlayback();$('play').disabled=!state.ready;$('status').textContent='Ready · 等待输入';}
 async function play(){
+ const pace=sliderValue('speed');
  const request=++state.request;resetPlayback();$('error').textContent='';$('play').disabled=true;$('status').textContent='Preparing movement…';$('stop').disabled=false;
  try{
-  const response=await fetch('/api/plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:$('text').value,speed:Number($('speed').value)})});
+  const response=await fetch('/api/plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:$('text').value,speed:1})});
   const plan=await response.json();if(!response.ok)throw new Error(plan.error||'Could not prepare movement.');if(request!==state.request)return;
+  // The server supplies the base timeline; pace is applied locally so slower
+  // settings work without restarting an already-running server.
+  for(const cue of plan.timeline){cue.start/=pace;cue.end/=pace;}
+  plan.duration/=pace;
   state.plan=plan;$('readout').replaceChildren(...plan.words.map(word=>{const span=document.createElement('span');span.textContent=word.text+(/[A-Za-z0-9]/.test(word.text)?' ':'');return span;}));lastWord=-2;
   $('meta').textContent=plan.language+' · '+plan.duration.toFixed(1)+' SEC';state.start=performance.now();state.playing=true;$('play').textContent='Restart';$('stop').disabled=false;
  }catch(error){if(request!==state.request)return;$('error').textContent=error.message;$('status').textContent='Waiting for a sentence';$('stop').disabled=true;}
@@ -163,8 +184,9 @@ for(const [key,label] of Object.entries(labels)){const button=document.createEle
 $('play').addEventListener('click',play);$('stop').addEventListener('click',stop);
 $('example-en').addEventListener('click',()=>{stop();$('text').value='I can still hear the room after it falls silent.';});
 $('example-zh').addEventListener('click',()=>{stop();$('text').value='你还在这里吗？我听见了风，也听见了你。';});
-$('speed').addEventListener('input',()=>{$('speed-value').textContent=Number($('speed').value).toFixed(2)+'×';if(state.playing)stop();});
-$('amount').addEventListener('input',()=>{$('amount-value').textContent=Number($('amount').value).toFixed(2)+'×';});
+$('speed').addEventListener('input',()=>{updateSliderLabel('speed');if(state.playing||$('play').disabled&&state.ready)stop();});
+$('amount').addEventListener('input',()=>{updateSliderLabel('amount');});
+updateSliderLabel('speed');updateSliderLabel('amount');
 $('zoom').addEventListener('click',()=>{state.zoom=!state.zoom;$('zoom').setAttribute('aria-pressed',String(state.zoom));$('zoom').textContent=state.zoom?'Whole image':'Inspect face';});
 $('guides').addEventListener('click',()=>{state.guides=!state.guides;$('guides').setAttribute('aria-pressed',String(state.guides));$('guide-note').hidden=!state.guides;});
 $('fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('stage').requestFullscreen();}catch(error){$('error').textContent='Full screen is unavailable here. Open this page in Safari or Chrome.';}});
