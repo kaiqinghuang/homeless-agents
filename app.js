@@ -20,11 +20,13 @@ const canvas = $('portrait');
 const gl = canvas.getContext('webgl', {alpha:false, antialias:false, preserveDrawingBuffer:true});
 const shapes = {X:[0,1,0], A:[.02,.94,0], B:[.23,1.02,.5], C:[.55,1.02,.2], D:[1,.96,.1], E:[.42,.90,.05], F:[.30,.94,0], G:[.15,1,.7], H:[.4,.98,.25]};
 // Shared calibration: these are hand-set image coordinates, not detected landmarks.
-const mouthGeometry = {x:548, y:365, halfWidth:25, falloffX:43, falloffY:32, curve:3.1, opening:15};
+const mouthGeometry = {x:602.08, y:390.85, halfWidth:25.74, falloffX:44.27, falloffY:32.95, curve:3.19, opening:15.44};
+// The original central face is translated and scaled 1.02955× in the new composition.
+const faceCrop = [.304, .29, .41, .41];
 // Decorative cheek anchors in the original image; they follow the skin warp without driving it.
 const cheekGuidePoints = [
- [495,316],[510,340],[491,351],[500,371],
- [593,316],[582,340],[601,350],[591,371]
+ [547.50,340.41],[562.95,365.12],[543.39,376.45],[552.66,397.04],
+ [648.40,340.40],[637.08,365.11],[656.64,375.40],[646.35,397.02]
 ];
 const GUIDE_COUNT = 13 + cheekGuidePoints.length;
 const guidePoints = new Float32Array(GUIDE_COUNT * 2);
@@ -37,6 +39,10 @@ varying vec2 uv; uniform sampler2D photo; uniform vec2 resolution; uniform vec3 
 uniform float showGuides; uniform float guideRadius; uniform vec2 guidePoints[${GUIDE_COUNT}];
 void main(){
  vec2 p=(crop.xy+uv*crop.zw)*resolution;
+ // Outside the central face, sample the unmodified photograph exactly.
+ if(p.x<510.0||p.x>704.0||p.y<300.0||p.y>449.0){
+  gl_FragColor=vec4(texture2D(photo,p/resolution).rgb,1.0);return;
+ }
  vec2 center=vec2(${mouthGeometry.x.toFixed(1)},${mouthGeometry.y.toFixed(1)});
  float dx=p.x-center.x;
  float local=exp(-pow(dx/${mouthGeometry.falloffX.toFixed(1)},4.0)-pow((p.y-center.y)/${mouthGeometry.falloffY.toFixed(1)},4.0));
@@ -50,7 +56,7 @@ void main(){
  float bottom=seam+opening*.64*edge;
  float shift=(p.y<seam ? opening*.36 : -opening*.64)*edge;
  float outside=p.y<seam?max(0.0,top-p.y):max(0.0,p.y-bottom);
- float sy=p.y+shift*exp(-outside/15.0);
+ float sy=p.y+shift*exp(-outside/15.44);
  vec3 col=texture2D(photo,vec2(sx,sy)/resolution).rgb;
  float cavity=smoothstep(top-.35,top+.75,p.y)*(1.0-smoothstep(bottom-.65,bottom+.35,p.y));
  cavity*=smoothstep(0.0,.10,edge)*smoothstep(.0,1.4,opening);
@@ -73,6 +79,7 @@ function compile(type, source){const shader=gl.createShader(type);gl.shaderSourc
 function setup(image){
  if(!gl)throw new Error('This browser cannot render WebGL. Please use Safari or Chrome.');
  canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
+ $('stage').style.aspectRatio=canvas.width+'/'+canvas.height;
  program=gl.createProgram();gl.attachShader(program,compile(gl.VERTEX_SHADER,vertex));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,fragment));gl.linkProgram(program);
  if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));
  gl.useProgram(program);
@@ -102,7 +109,7 @@ function updateGuides(){
   let y=sourceY;
   for(let i=0;i<24;i++){
    const outside=Math.max(0,above?boundary-y:y-boundary);
-   y=sourceY-shift*Math.exp(-outside/15);
+   y=sourceY-shift*Math.exp(-outside/15.44);
   }
   let dx=sourceDX;
   for(let i=0;i<24;i++){
@@ -133,7 +140,7 @@ function updateGuides(){
 function draw(){
  gl.uniform3fv(uniforms.mouth,state.current);gl.uniform1f(uniforms.amount,sliderValue('amount'));
  // Preserve the original aspect ratio while zooming into the face.
- const crop=state.zoom?[.287,.25,.43,.43]:[0,0,1,1];
+ const crop=state.zoom?faceCrop:[0,0,1,1];
  gl.uniform4fv(uniforms.crop,crop);
  gl.uniform1f(uniforms.showGuides,state.guides?1:0);
  if(state.guides){
@@ -194,7 +201,7 @@ $('guides').addEventListener('click',()=>{state.guides=!state.guides;$('guides')
 $('fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('stage').requestFullscreen();}catch(error){$('error').textContent='Full screen is unavailable here. Open this page in Safari or Chrome.';}});
 $('text').addEventListener('keydown',event=>{if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();if(state.ready)play();}});
 canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();state.ready=false;stop();$('error').textContent='Graphics context lost. Reload the page to restore the portrait.';});
-const portrait=new Image();portrait.onload=()=>{try{setup(portrait);}catch(error){$('error').textContent=error.message;$('status').textContent='Could not render portrait';}};portrait.onerror=()=>{$('error').textContent='Portrait image could not be loaded.';};portrait.src='assets/portrait.png';
+const portrait=new Image();portrait.onload=()=>{try{setup(portrait);}catch(error){$('error').textContent=error.message;$('status').textContent='Could not render portrait';}};portrait.onerror=()=>{$('error').textContent='Portrait image could not be loaded.';};portrait.src='assets/portrait.png?v=central-face-3';
 
 // Both generated replies and the optional transcript echo use the same player.
 let automaticRequest=null;

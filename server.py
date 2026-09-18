@@ -6,7 +6,7 @@ import math
 import time
 import signal
 from urllib.parse import urlsplit, parse_qs
-from audio_runtime import AudioArchive, WhisperEngine, audio_features
+from audio_runtime import AudioArchive, audio_features
 from mouth_plan import plan
 from agent_runtime import LocalAgent
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -39,7 +39,7 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         path = urlsplit(self.path).path
         if path == '/api/status':
-            self.respond({'stage': 3, 'engine': self.server.engine.status(), 'agent': self.server.agent.status(), 'archive': self.server.archive.today()})
+            self.respond({'stage': 4, 'engine': self.server.agent.status(), 'agent': self.server.agent.status(), 'archive': self.server.archive.today()})
         elif path == '/api/events':
             self.respond({'events': self.server.archive.recent()})
         elif path == '/api/decisions':
@@ -81,17 +81,20 @@ class Handler(SimpleHTTPRequestHandler):
                     raise ValueError('Text is required.')
                 result = plan(data['text'], data.get('speed', 1))
             elif parsed.path == '/api/engine/start':
-                self.server.engine.start()
-                result = self.server.engine.status()
-            elif parsed.path == '/api/agent/start':
                 self.server.agent.start()
+                result = self.server.agent.status()
+            elif parsed.path == '/api/agent/start':
+                self.server.agent.start(restart=data.get('restart') is True)
                 result = self.server.agent.status()
             elif parsed.path in ('/api/agent/decide', '/api/agent/test'):
                 if parsed.path == '/api/agent/test':
                     phrase = data.get('text')
                     if not isinstance(phrase, str) or not 1 <= len(phrase.strip()) <= 500:
                         raise ValueError('Enter a test message of 1–500 characters.')
-                    event = self.server.archive.save({'kind': 'text_input', 'source': 'text-test',
+                    language = data.get('language', 'en')
+                    if language not in ('en', 'zh'):
+                        raise ValueError('Choose English or 中文.')
+                    event = self.server.archive.save({'language_mode': language, 'kind': 'text_input', 'source': 'text-test',
                                                      'text': phrase.strip(), 'session': 'text-test'})
                 else:
                     event_id = data.get('event_id')
@@ -117,32 +120,17 @@ class Handler(SimpleHTTPRequestHandler):
             self.respond({'error': 'Local processing failed. Check the app terminal.'}, 500)
 
     def handle_audio(self, payload, query):
-        language = query.get('language', ['auto'])[0]
+        language = query.get('language', ['en'])[0]
         source = query.get('source', ['candidate'])[0]
-        if language not in ('auto', 'en', 'zh') or source not in ('candidate', 'ambient', 'file'):
+        if language not in ('en', 'zh') or source not in ('candidate', 'ambient', 'file'):
             raise ValueError('Unsupported language or audio source.')
         features = audio_features(payload)
-        engine = self.server.engine
-        if not engine.inference_lock.acquire(blocking=False):
-            self.respond({'error': 'Speech worker is busy. This clip was not archived.'}, 429)
-            return
-        try:
-            began = time.monotonic()
-            event = {'source': source, 'session': query.get('session', [''])[0][:64], 'features': features,
-                     'model': 'whisper-small', 'vad': 'silero-v6.2.0', 'language_mode': language}
-            if features['rms_dbfs'] < -65:
-                event.update(kind='silence', text='', language=None)
-            else:
-                try:
-                    result = engine.transcribe(payload, language)
-                    event.update(result, kind='speech' if result['text'] else 'environment')
-                except Exception as error:
-                    event.update(kind='error', text='', error=str(error), language=None)
-            event['processing_seconds'] = round(time.monotonic() - began, 2)
-            saved = self.server.archive.save(event, payload)
-            self.respond(saved, 503 if event['kind'] == 'error' else 200)
-        finally:
-            engine.inference_lock.release()
+        # Archive the waveform directly; no ASR, VAD or sound-to-text conversion.
+        event = {'source': source, 'session': query.get('session', [''])[0][:64],
+                 'features': features, 'language_mode': language, 'language': None,
+                 'kind': 'silence' if features['rms_dbfs'] < -65 else 'audio',
+                 'text': '', 'transcription': False, 'processing_seconds': 0}
+        self.respond(self.server.archive.save(event, payload))
 
 
 if __name__ == '__main__':
@@ -154,10 +142,8 @@ if __name__ == '__main__':
         server = ThreadingHTTPServer(('127.0.0.1', args.port), Handler)
     except OSError as error:
         raise SystemExit(f'Cannot start on port {args.port}: {error}. Close the previous app terminal and try again.')
-    server.engine = WhisperEngine(ROOT)
     server.archive = AudioArchive(args.data_dir)
     server.agent = LocalAgent(ROOT, server.archive)
-    server.engine.start()
     server.agent.start()
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
     print(f'Afterimage · Listening: http://127.0.0.1:{server.server_port}', flush=True)
@@ -168,5 +154,4 @@ if __name__ == '__main__':
         pass
     finally:
         server.server_close()
-        server.engine.close()
         server.agent.close()

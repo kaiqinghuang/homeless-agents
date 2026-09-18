@@ -3,7 +3,7 @@ const vm=require('node:vm'), fs=require('node:fs'), assert=require('node:assert/
 const elements=new Map();
 const el=id=>{if(!elements.has(id))elements.set(id,{value:'',textContent:'',disabled:false,hidden:false,
  handlers:{},addEventListener(name,fn){this.handlers[name]=fn;}});return elements.get(id);};
-el('response-mode').value='ai';el('response-threshold').value='60';
+el('speech-language').value='en';el('response-mode').value='ai';el('response-threshold').value='60';
 let busyFace=false, automatic=false, pump, resolveRequest, calls=[], spoken=[];
 const context=vm.createContext({document:{getElementById:el},AbortController,Date,
  window:{addEventListener(){},afterimageMotion:{isBusy:()=>busyFace,isAutomatic:()=>automatic,
@@ -15,8 +15,9 @@ const agent=context.window.afterimageAgent;
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
 (async()=>{
  agent.status({state:'ready',model:'local'});
- agent.observe({kind:'speech',id:'first'});assert.equal(calls.length,1);
- agent.observe({kind:'speech',id:'second'});agent.observe({kind:'speech',id:'latest'});
+ agent.observe({kind:'audio',id:'wrong-language',language_mode:'zh'});assert.equal(calls.length,0);
+ agent.observe({kind:'audio',id:'first'});assert.equal(calls.length,1);
+ agent.observe({kind:'speech',id:'second'});agent.observe({kind:'audio',id:'latest'});
  resolveRequest({ok:true,json:async()=>({action:'silent',reason:'background',text:'',salience:.1})});await flush();
  pump();assert.equal(calls.at(-1).event_id,'latest');
  agent.stop();
@@ -29,5 +30,8 @@ const flush=()=>new Promise(resolve=>setImmediate(resolve));
  el('response-mode').value='collect';el('response-mode').handlers.change();
  agent.observe({kind:'speech',id:'collect-only'});pump();assert.equal(calls.length,3);
  assert.equal(automatic,false);
+ el('response-mode').value='ai';el('speech-language').value='zh';el('agent-input').value='Hello';
+ el('agent-test').handlers.click();assert.equal(calls.at(-1).language,'zh');
+ agent.stop();
  console.log('PASS: latest-input queue, face-busy wait, stop/cancel, mode change, and generated reply playback.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -61,18 +61,19 @@
    el('agent-retry').hidden=data?.state!=='error';buttons();
   },
   observe(event){
-   if(mode()!=='ai'||!['speech','environment','silence'].includes(event.kind))return;
+   if(event.language_mode&&event.language_mode!==el('speech-language').value)return;
+   if(mode()!=='ai'||!['audio','speech','environment','silence'].includes(event.kind))return;
    state.pending={event,received:Date.now()};
    if(state.busy||window.afterimageMotion.isBusy())note('Latest input waiting / 最新输入等待回应');
    pump();
   }
  };
- el('response-mode').addEventListener('change',()=>{stop();note(mode()==='ai'?'Listening for a reason to respond / 等待值得回应的声音':mode()==='echo'?'Transcript echo / 复述识别文字':'Collecting only / 只收集，不回应');});
+ el('response-mode').addEventListener('change',()=>{stop();note(mode()==='ai'?'Listening for a reason to respond / 等待值得回应的声音':'Collecting only / 只收集，不回应');});
  el('response-threshold').addEventListener('input',()=>{el('threshold-value').textContent=threshold().toFixed(2);});
  el('agent-cancel').addEventListener('click',stop);
  el('agent-test').addEventListener('click',()=>{
   const text=el('agent-input').value.trim();if(!text){note('Enter a test message first. / 请先输入测试文字。');return;}
-  state.pending=null;run('/api/agent/test',{text});
+  state.pending=null;run('/api/agent/test',{text,language:el('speech-language').value});
  });
  el('agent-retry').addEventListener('click',async()=>{
   try{await fetch('/api/agent/start',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});note('Reconnecting… / 正在重连');}

@@ -48,7 +48,7 @@ class AudioArchive:
 
     def recent(self):
         with self.connect() as db:
-            rows = db.execute("SELECT payload FROM events WHERE kind IN ('speech','environment','silence','error') ORDER BY created_at DESC LIMIT 20").fetchall()
+            rows = db.execute("SELECT payload FROM events WHERE kind IN ('audio','speech','environment','silence','error') ORDER BY created_at DESC LIMIT 20").fetchall()
         return [json.loads(row[0]) for row in rows]
 
     def get(self, event_id):
@@ -66,11 +66,13 @@ class AudioArchive:
             row = db.execute("SELECT payload FROM events WHERE kind='decision' AND json_extract(payload, '$.source_id')=? ORDER BY created_at DESC LIMIT 1", (source_id,)).fetchone()
         return json.loads(row[0]) if row else None
 
-    def agent_memory(self, session, prompt_version=None):
+    def agent_memory(self, session, prompt_version=None, language=None):
         if not session:
             return []
         memory = []
         for decision in self.decisions():
+            if language is not None and decision.get('language') != language:
+                continue
             if prompt_version is not None and decision.get('prompt_version') != prompt_version:
                 continue
             if decision.get('session') != session or decision.get('source') == 'text-test' or decision['action'] != 'speak':

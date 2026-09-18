@@ -4,6 +4,8 @@
  const session={active:false,starting:false,stream:null,context:null,node:null,analyser:null,ring:[],ringSeconds:0,clip:null,
    elapsed:0,lastAbove:0,clipStart:0,floor:-65,lastRoom:0,lastAmbient:0,lastMeter:0,queue:[],busy:false,controller:null,
    generation:0,id:'',ready:false,events:[],statusTimer:null};
+ const languagePreferenceKey='afterimage.language.fixed.v1';
+ try{const saved=localStorage.getItem(languagePreferenceKey);el('speech-language').value=saved==='zh'?'zh':'en';}catch(error){el('speech-language').value='en';}
  let room={rms_dbfs:-100,peak_dbfs:-100,brightness_hz:0};
  let pollErrors=0;
  const inputPreferenceKey='afterimage.microphone.v1';
@@ -17,6 +19,7 @@
   el('listen-start').disabled=!session.ready||session.active||session.starting;
   el('listen-stop').disabled=!session.active&&!session.starting;
   el('microphone').disabled=session.active||session.starting;
+  el('speech-language').disabled=session.starting;
   el('audio-test').disabled=!session.ready||session.active||session.busy;
  }
  async function poll(){
@@ -24,13 +27,14 @@
    const response=await fetch('/api/status');
    if(!response.ok)throw Error('Restart Start.command once to enable the new listening service.');
    const data=await response.json();
-   if(data.stage!==3)throw Error('Restart Start.command to load the response service.');
+   if(data.stage!==4)throw Error('Restart Start.command to load direct audio.');
+   if(data.agent?.language_modes?.join(',')!=='en,zh')throw Error('Restart Start.command to enable separate language modes. / 请重启以启用独立语言模式。');
    window.afterimageAgent?.status(data.agent);
    session.ready=data.engine.state==='ready';
-   text('engine-state',session.ready?'Whisper small · '+data.engine.backend+' · 本地':data.engine.state==='loading'?'Loading local speech model…':data.engine.error||'Speech model unavailable');
+   text('engine-state',session.ready?'Direct audio · MLX · 直接听声音':data.engine.state==='loading'?'Loading local audio model…':data.engine.error||'Audio model unavailable');
    el('engine-state').classList.toggle('engine-ready',session.ready);
    const counts=data.archive.counts;
-   text('archive-count',(counts.speech||0)+' speech clips · '+((counts.environment||0)+(counts.silence||0))+' environment clips today');
+   text('archive-count',((counts.audio||0)+(counts.speech||0)+(counts.environment||0)+(counts.silence||0))+' sound clips today / 今日声音片段');
    pollErrors=0;buttons();
   }catch(error){session.ready=false;buttons();text('engine-state',error.message);pollErrors++;}
   session.statusTimer=setTimeout(poll,pollErrors?5000:3000);
@@ -68,7 +72,7 @@
    const kind=document.createElement('span');kind.textContent=(event.kind==='speech'?(event.language||'speech').toUpperCase():event.kind.toUpperCase())+' · '+event.features.duration.toFixed(1)+' s';
    meta.append(when,kind);
    const content=document.createElement('div');content.className='event-text';
-   content.textContent=event.text||event.error||(event.kind==='silence'?'Quiet sample':'No speech accepted · '+event.features.texture)+' · '+event.features.rms_dbfs+' dBFS';
+   content.textContent=event.text||event.error||(event.kind==='silence'?'Quiet sample / 安静片段':event.kind==='audio'?'Direct audio / 原始声音':event.features.texture)+' · '+event.features.rms_dbfs+' dBFS';
    li.append(meta,content);list.append(li);
   }
  }
@@ -99,7 +103,7 @@
  }
  function enqueue(blocks,source,rate){
   if(!blocks.length)return;
-  if(session.queue.length>=2){message('Recognition is behind; one new clip was skipped. / 识别积压，已跳过一个片段。');return;}
+  if(session.queue.length>=2){message('Capture is behind; one new clip was skipped. / 采集积压，已跳过一个片段。');return;}
   const samples=concatenate(blocks);
   if(samples.length/rate<.4)return;
   session.queue.push({audio:wav(samples,rate),source,language:el('speech-language').value,generation:session.generation});
@@ -108,21 +112,17 @@
  async function processQueue(){
   if(session.busy||!session.queue.length)return;
   const item=session.queue.shift(),generation=item.generation;
-  session.busy=true;session.controller=new AbortController();buttons();text('recognition-state','Recognizing locally… / 本地识别中');
+  session.busy=true;session.controller=new AbortController();buttons();text('recognition-state','Saving sound… / 保存声音');
   try{
    const params=new URLSearchParams({language:item.language,source:item.source,session:session.id});
    const response=await fetch('/api/audio?'+params,{method:'POST',headers:{'Content-Type':'audio/wav'},body:item.audio,signal:session.controller.signal});
    const result=await response.json();
    if(generation!==session.generation)return;
-   if(!response.ok){if(result.id){session.events.unshift(result);renderEvents();}throw Error(result.error||'Local recognition failed.');}
+   if(!response.ok){if(result.id){session.events.unshift(result);renderEvents();}throw Error(result.error||'Local recording failed.');}
    session.events.unshift(result);session.events=session.events.slice(0,20);renderEvents();
-   text('recognition-state',result.kind==='speech'?'Heard '+(result.language||'speech').toUpperCase()+' · '+result.processing_seconds+' s':'Environment captured · 环境声已记录');
+   text('recognition-state','Sound captured · 声音已记录');
    window.afterimageAgent?.observe(result);
-   if(result.text&&window.afterimageAgent?.mode()==='echo'&&['en','zh'].includes(result.language)){
-    const played=await window.afterimageMotion?.echo(result.text);
-    if(!played)text('recognition-state','Speech saved · face is busy / 已记录，口型播放中');
-   }
-  }catch(error){if(error.name!=='AbortError'&&generation===session.generation){message(error.message);text('recognition-state','Recognition error / 识别失败');}}
+  }catch(error){if(error.name!=='AbortError'&&generation===session.generation){message(error.message);text('recognition-state','Recording error / 录音保存失败');}}
   finally{session.busy=false;session.controller=null;buttons();if(session.queue.length)processQueue();}
  }
  function capture(block){
@@ -197,6 +197,17 @@
   const context=session.context;session.context=null;if(context&&context.state!=='closed')await context.close();
   el('recording-dot').hidden=true;el('input-level').value=-100;text('level-value','— dBFS');status('Microphone off / 麦克风已关闭');text('active-input','Active input / 正在使用：—');text('recognition-state','');buttons();
  }
+ el('speech-language').addEventListener('change',()=>{
+  const language=el('speech-language').value;
+  try{localStorage.setItem(languagePreferenceKey,language);}catch(error){}
+  window.afterimageAgent?.stop();
+  // Discard old-language audio, uploads and pending replies at the boundary.
+  session.generation++;session.queue=[];session.controller?.abort();
+  session.clip=null;session.ring=[];session.ringSeconds=0;session.lastAmbient=session.elapsed;
+  session.id=crypto.randomUUID();
+  el('agent-reply').textContent='—';
+  text('recognition-state',language==='en'?'English mode':'中文模式');
+ });
  el('microphone').addEventListener('change',()=>{
   inputPreference=el('microphone').value;
   try{localStorage.setItem(inputPreferenceKey,inputPreference);}catch(error){}
@@ -205,10 +216,11 @@
  el('listen-start').addEventListener('click',start);el('listen-stop').addEventListener('click',stop);
  el('audio-test').addEventListener('click',()=>el('audio-file').click());
  el('audio-file').addEventListener('change',async()=>{
-  const file=el('audio-file').files[0];if(!file)return;message('');let context;
+  const file=el('audio-file').files[0];if(!file)return;message('');let context;const generation=session.generation;
   try{
    if(file.size>15*1024*1024)throw Error('Choose an audio file under 15 MB.');
    context=new AudioContext();const decoded=await context.decodeAudioData(await file.arrayBuffer());
+   if(generation!==session.generation)return;
    if(decoded.duration<.4||decoded.duration>15)throw Error('Choose a short audio clip: 0.4–15 seconds.');
    const mono=new Float32Array(decoded.length);for(let c=0;c<decoded.numberOfChannels;c++){const data=decoded.getChannelData(c);for(let i=0;i<mono.length;i++)mono[i]+=data[i]/decoded.numberOfChannels;}
    session.id='file-'+crypto.randomUUID();enqueue([mono],'file',decoded.sampleRate);

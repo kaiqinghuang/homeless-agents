@@ -1,16 +1,14 @@
-"""Local-only Ollama decisions; no model training, cloud calls, or tool execution."""
+"""Direct local audio decisions. No ASR, cloud calls, or training."""
 import hashlib
 import json
 import math
 import os
 from pathlib import Path
+import queue
 import re
-import shutil
 import subprocess
 import threading
 import time
-import urllib.error
-import urllib.request
 
 SCHEMA = {'type': 'object', 'properties': {
     'respond': {'type': 'boolean'}, 'salience': {'type': 'number'},
@@ -20,10 +18,10 @@ SCHEMA = {'type': 'object', 'properties': {
 
 
 def response_language(event):
-    if event.get('language') in ('en', 'zh'):
-        return event['language']
-    text = event.get('text', '')
-    return 'zh' if len(re.findall(r'[\u3400-\u9fff]', text)) > len(re.findall(r'[A-Za-z]+', text)) else 'en'
+    language = event.get('language_mode', 'en')
+    if language not in ('en', 'zh'):
+        raise ValueError('Choose English or 中文; automatic language mode is no longer supported.')
+    return language
 
 
 class LocalAgent:
@@ -32,80 +30,117 @@ class LocalAgent:
         self.config = json.loads((self.root / 'agent_config.json').read_text())
         self.prompt = (self.root / 'agent_prompt.txt').read_text()
         self.prompt_hash = hashlib.sha256(self.prompt.encode()).hexdigest()[:16]
-        self.url = 'http://127.0.0.1:11434'
-        self.state, self.error, self.digest = 'idle', '', ''
+        self.state, self.error = 'idle', ''
+        self.digest = self.config['revision']
         self.lock, self.start_lock = threading.Lock(), threading.Lock()
         self.process, self.log, self.closed = None, None, False
+        self.responses = queue.Queue()
         self.last_reply, self.last_environment = -math.inf, -math.inf
         self.busy = False
-        self.http = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-    def request(self, path, data=None, timeout=4):
-        request = urllib.request.Request(self.url + path,
-            data=json.dumps(data, ensure_ascii=False).encode() if data is not None else None,
-            headers={'Content-Type': 'application/json'})
-        try:
-            with self.http.open(request, timeout=timeout) as response:
-                return json.load(response)
-        except urllib.error.HTTPError as error:
-            detail = error.read(2048).decode(errors='replace')
-            raise RuntimeError('Local model request failed: ' + detail[:300]) from error
-
-    def start(self):
+    def start(self, restart=False):
         with self.start_lock:
+            if restart and not self.busy and self.state != 'loading':
+                self.state = 'idle'
             if self.closed or self.state in ('loading', 'ready'):
                 return
             self.state, self.error = 'loading', ''
         threading.Thread(target=self._boot, daemon=True).start()
 
+    @staticmethod
+    def _read(process, responses):
+        try:
+            for line in process.stdout:
+                try:
+                    responses.put(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+        finally:
+            responses.put({'error': 'The audio model stopped. Restart Start.command.'})
+
+    def _terminate(self):
+        process = self.process
+        if process and process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+        if process:
+            for stream in (process.stdin, process.stdout):
+                if stream:
+                    stream.close()
+        if self.log:
+            self.log.close()
+            self.log = None
+
     def _boot(self):
         try:
-            try:
-                self.request('/api/version')
-            except (OSError, urllib.error.URLError):
-                binary = shutil.which('ollama') or '/Applications/Ollama.app/Contents/Resources/ollama'
-                if not Path(binary).is_file():
-                    raise RuntimeError('Open or install Ollama, then retry. / 请先打开或安装 Ollama。')
-                with self.start_lock:
-                    if self.closed:
-                        return
-                    self.log = (self.archive.root / 'ollama.log').open('a')
-                    env = {**os.environ, 'OLLAMA_HOST': '127.0.0.1:11434',
-                           'OLLAMA_NO_CLOUD': '1', 'OLLAMA_NOPRUNE': '1'}
-                    self.process = subprocess.Popen([binary, 'serve'], env=env, cwd=self.root,
-                                                    stdout=self.log, stderr=subprocess.STDOUT)
-                deadline = time.monotonic() + 20
-                while not self.closed:
-                    try:
-                        self.request('/api/version')
-                        break
-                    except (OSError, urllib.error.URLError):
-                        if time.monotonic() > deadline or self.process.poll() is not None:
-                            raise RuntimeError('Ollama could not start. Open the Ollama app and retry.')
-                        time.sleep(.3)
-            models = self.request('/api/tags')['models']
-            match = next((m for m in models if m['name'] == self.config['model']), None)
-            if not match:
-                raise RuntimeError('Local model missing. Run: ollama pull ' + self.config['model'])
-            details = self.request('/api/show', {'model': self.config['model']})
-            if details.get('remote_host') or details.get('remote_model') or match.get('details', {}).get('format') != 'gguf':
-                raise RuntimeError('This installation requires locally stored GGUF weights; cloud models are disabled.')
-            self.digest = match.get('digest', '')
+            with self.start_lock:
+                if self.closed:
+                    return
+                self._terminate()
+                python = self.root / '.venv-audio/bin/python'
+                weights = self.root / 'models/qwen2-audio-7b-4bit'
+                if not python.is_file() or not list(weights.glob('*.safetensors')):
+                    raise RuntimeError('Run Setup.command to install the local audio model.')
+                self.log = (self.archive.root / 'direct-audio.log').open('a')
+                self.responses = queue.Queue()
+                env = {**os.environ, 'HF_HUB_OFFLINE': '1', 'TRANSFORMERS_OFFLINE': '1',
+                       'HF_HUB_DISABLE_TELEMETRY': '1', 'HF_HOME': str(self.root / 'models/.hf-cache')}
+                self.process = subprocess.Popen([str(python), '-u', str(self.root / 'direct_audio_worker.py')],
+                    cwd=self.root, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                    stderr=self.log, text=True, bufsize=1)
+                threading.Thread(target=self._read, args=(self.process, self.responses), daemon=True).start()
+            ready = self.responses.get(timeout=180)
+            if not ready.get('ready'):
+                raise RuntimeError(ready.get('error', 'Audio model failed to load.'))
             if not self.closed:
-                self.state, self.error = 'ready', ''
+                self.state = 'ready'
         except Exception as error:
-            self.state, self.error = 'error', str(error)
+            self.state = 'error'
+            self.error = str(error) or 'Audio model loading timed out.'
+            if 'Metal' in self.error:
+                self.error = 'GPU unavailable here. Open Start.command from Finder. / 请从访达打开 Start.command。'
+            with self.start_lock:
+                self._terminate()
 
     def status(self):
+        if self.state == 'ready' and self.process and self.process.poll() is not None:
+            self.state, self.error = 'error', 'Audio model stopped. Reconnect the model.'
         return {'state': self.state, 'error': self.error, 'model': self.config['model'],
+                'backend': 'MLX · Metal', 'input': 'direct_audio', 'transcription': False,
                 'busy': self.busy, 'local': True, 'training': False,
-                'threshold': self.config['threshold'], 'digest': self.digest}
+                'threshold': self.config['threshold'], 'digest': self.digest,
+                'language_modes': ['en', 'zh'], 'default_language': 'en'}
+
+    def request(self, payload):
+        if not self.process or self.process.poll() is not None:
+            raise RuntimeError('Audio model is not running. Reconnect the model.')
+        self.process.stdin.write(json.dumps(payload, ensure_ascii=False) + '\n')
+        self.process.stdin.flush()
+        try:
+            result = self.responses.get(timeout=180)
+        except queue.Empty as error:
+            # Kill timed-out inference so its late output cannot satisfy a later request.
+            self._terminate()
+            raise RuntimeError('Audio inference timed out. Reconnect the model.') from error
+        if result.get('error'):
+            raise RuntimeError(result['error'])
+        return result
+
+    def audio_path(self, event):
+        path = (self.archive.root / event['audio']).resolve()
+        if not path.is_relative_to(self.archive.root.resolve()) or not path.is_file() or path.suffix != '.wav':
+            raise ValueError('Archived recording is missing or invalid.')
+        return str(path)
 
     def decide(self, event, threshold=None):
         threshold = self.config['threshold'] if threshold is None else threshold
         if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) or not math.isfinite(threshold) or not 0 <= threshold <= 1:
             raise ValueError('Response threshold must be between 0 and 1.')
-        if event.get('kind') not in ('speech', 'environment', 'silence', 'text_input'):
+        if event.get('kind') not in ('audio', 'speech', 'environment', 'silence', 'text_input'):
             raise ValueError('This event cannot be used as a model observation.')
         if not self.lock.acquire(blocking=False):
             return {'action': 'deferred', 'reason': 'model_busy', 'text': '', 'source_id': event['id']}
@@ -115,55 +150,63 @@ class LocalAgent:
                 return {**previous, 'reused': True}
             self.busy = True
             began = time.monotonic()
+            is_test = event.get('source') == 'text-test'
+            language = response_language(event)
             result = {'kind': 'decision', 'source_id': event['id'], 'source_kind': event['kind'],
                       'session': event.get('session', ''), 'source': event.get('source', ''),
                       'model': self.config['model'], 'model_digest': self.digest,
                       'prompt_version': self.prompt_hash, 'threshold': threshold,
-                      'language': response_language(event), 'text': '', 'salience': None,
-                      'action': 'silent', 'decision_by': 'gate', 'training': False}
-            is_test = event.get('source') == 'text-test'
+                      'language': language, 'text': '', 'salience': None,
+                      'action': 'silent', 'decision_by': 'gate', 'training': False,
+                      'input_representation': 'text_test' if is_test else 'audio_embeddings', 'transcription': False}
+            ambient = event.get('source') == 'ambient' or event['kind'] == 'environment'
             if event['kind'] == 'silence':
                 result['reason'] = 'quiet'
             elif not is_test and began - self.last_reply < self.config['cooldown_seconds']:
                 result.update(action='deferred', reason='cooldown')
-            elif event['kind'] == 'environment' and began - self.last_environment < self.config['environment_interval_seconds']:
+            elif ambient and began - self.last_environment < self.config['environment_interval_seconds']:
                 result.update(action='deferred', reason='environment_interval')
             else:
-                if self.state != 'ready':
-                    raise RuntimeError(self.error or 'Local language model is loading. Please wait.')
-                if event['kind'] == 'environment':
-                    self.last_environment = began
-                # Short context only: generated replies are identified as generated,
-                # not claimed to have been played. Tests never enter this context.
-                memory = self.archive.agent_memory(event.get('session', ''), self.prompt_hash) if not is_test else []
-                observation = {'kind': event['kind'], 'transcript': event.get('text', ''),
-                    'audio_features': event.get('features'), 'response_language': result['language'],
-                    'recent_observations_and_generated_responses': memory}
-                params = {'model': self.config['model'], 'stream': False, 'think': False,
-                    'format': SCHEMA, 'keep_alive': '10m',
-                    'options': {k: self.config[k] for k in ('temperature', 'num_ctx', 'num_predict')},
-                    'messages': [{'role': 'system', 'content': self.prompt},
-                                 {'role': 'user', 'content': json.dumps(observation, ensure_ascii=False)}]}
                 try:
-                    response = self.request('/api/chat', params, timeout=90)
-                    if response.get('done_reason') == 'length':
+                    if self.state != 'ready':
+                        raise RuntimeError(self.error or 'Local audio model is loading. Please wait.')
+                    memory = self.archive.agent_memory(event.get('session', ''), self.prompt_hash, language) if not is_test else []
+                    # Previous transcript fields never enter the direct-audio prompt.
+                    context = {'response_language': language,
+                               'previous_generated_replies': [m['generated_reply'] for m in memory]}
+                    if is_test:
+                        context['test_message'] = event['text']
+                    payload = {'system': self.prompt, 'prompt': json.dumps(context, ensure_ascii=False),
+                               'max_tokens': self.config['num_predict'], 'temperature': self.config['temperature']}
+                    if not is_test:
+                        payload['audio_path'] = self.audio_path(event)
+                    if ambient:
+                        self.last_environment = began
+                    response = self.request(payload)
+                    if response.get('truncated'):
                         raise ValueError('Model response exceeded its token budget.')
-                    generated = json.loads(response['message']['content'])
-                    self.validate(generated, result['language'])
+                    raw = response['text'].strip()
+                    result['raw_model_output'] = raw
+                    if raw.startswith('```') and raw.endswith('```'):
+                        raw = re.sub(r'^```(?:json)?\s*', '', raw)[:-3].strip()
+                    generated = json.loads(raw)
+                    self.validate(generated, language)
                     result.update(decision_by='model', salience=generated['salience'], reason=generated['reason'],
-                                  generation_options=params['options'], model_decision=generated)
+                                  generation_options={'temperature': payload['temperature'], 'max_tokens': payload['max_tokens']},
+                                  model_decision=generated)
                     if generated['respond'] and generated['salience'] >= threshold:
-                        result.update(action='speak', text=generated['text'].strip())
+                        reply = generated['text'].strip()
+                        result.update(action='speak', text=reply,
+                                      language=language)
                         if not is_test:
                             self.last_reply = time.monotonic()
                     elif generated['respond']:
                         result['reason'] = 'below_threshold'
-                    result['tokens'] = response.get('eval_count')
+                    result['tokens'] = response.get('tokens')
                 except Exception as error:
                     result.update(action='error', reason='model_error', error=str(error))
-                    if isinstance(error, (OSError, urllib.error.URLError, RuntimeError)):
-                        self.state = 'error'
-                        self.error = 'Open Ollama and reconnect. / 请打开 Ollama 后重连。 ' + str(error)[:200]
+                    if isinstance(error, (OSError, RuntimeError)):
+                        self.state, self.error = 'error', str(error)
             result['processing_seconds'] = round(time.monotonic() - began, 2)
             return self.archive.save(result)
         finally:
@@ -190,13 +233,4 @@ class LocalAgent:
     def close(self):
         with self.start_lock:
             self.closed = True
-        # Never stop an Ollama instance owned by the user or another application.
-        if self.process and self.process.poll() is None:
-            self.process.terminate()
-            try:
-                self.process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                self.process.kill()
-                self.process.wait()
-        if self.log:
-            self.log.close()
+            self._terminate()

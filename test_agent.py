@@ -1,4 +1,4 @@
-"""Deterministic policy/archival tests; no Ollama or microphone required."""
+"""Deterministic policy/archival tests; no GPU or microphone required."""
 import json
 from pathlib import Path
 import tempfile
@@ -22,12 +22,13 @@ class AgentTests(unittest.TestCase):
 
     @staticmethod
     def output(text='I am here.', respond=True, score=.9):
-        return {'message': {'content': json.dumps({'respond': respond, 'salience': score,
-                'text': text, 'reason': 'question' if respond else 'background'})}, 'done_reason': 'stop'}
+        return {'text': json.dumps({'respond': respond, 'salience': score,
+                'text': text, 'reason': 'question' if respond else 'background'}), 'tokens': 30}
 
     def event(self, **changes):
-        return self.archive.save({'kind': 'speech', 'text': 'Are you here?', 'language': 'en',
-                                  'session': 'test-room', 'source': 'candidate', **changes})
+        event = self.archive.save({'kind': 'speech', 'text': 'Are you here?', 'language': 'en',
+                                  'session': 'test-room', 'source': 'candidate', 'language_mode': changes.get('language') or 'en', **changes}, None if changes.get('source') == 'text-test' else b'fixture-wav')
+        return event
 
     def test_speak_and_idempotent_archive(self):
         event = self.event()
@@ -61,8 +62,8 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(result['reason'], 'environment_interval')
 
     def test_errors_are_not_reported_as_silence(self):
-        for output in [self.output('English only.'), {'message': {'content': 'not JSON'}},
-                       {**self.output(), 'done_reason': 'length'}]:
+        for output in [self.output('English only.'), {'text': 'not JSON'},
+                       {**self.output(), 'truncated': True}]:
             self.agent.request.return_value = output
             result = self.agent.decide(self.event(text='你好', language='zh'))
             self.assertEqual(result['action'], 'error')
@@ -70,7 +71,7 @@ class AgentTests(unittest.TestCase):
 
     def test_chinese_language_and_test_isolation(self):
         self.agent.request.return_value = self.output('我在这里。')
-        result = self.agent.decide(self.event(kind='text_input', source='text-test', text='你好吗？', language=None))
+        result = self.agent.decide(self.event(kind='text_input', source='text-test', text='你好吗？', language_mode='zh'))
         self.assertEqual(result['language'], 'zh')
         self.assertEqual(result['action'], 'speak')
         self.assertEqual(self.archive.agent_memory('test-room'), [])
@@ -93,7 +94,7 @@ class AgentTests(unittest.TestCase):
         result = self.agent.decide(self.event())
         self.assertEqual(result['action'], 'error')
         self.assertEqual(self.agent.status()['state'], 'error')
-        self.assertIn('reconnect', self.agent.status()['error'])
+        self.assertIn('connection refused', self.agent.status()['error'])
 
     def test_new_prompt_does_not_inherit_old_persona(self):
         old_input = self.event()
@@ -101,11 +102,71 @@ class AgentTests(unittest.TestCase):
                            'source': 'candidate', 'action': 'speak', 'text': 'A ripple.',
                            'prompt_version': 'previous-persona'})
         self.agent.decide(self.event())
-        payload = self.agent.request.call_args.args[1]
-        observation = json.loads(payload['messages'][1]['content'])
-        self.assertEqual(observation['recent_observations_and_generated_responses'], [])
+        payload = self.agent.request.call_args.args[0]
+        observation = json.loads(payload['prompt'])
+        self.assertEqual(observation['previous_generated_replies'], [])
         self.assertEqual(len(self.archive.decisions()), 2)
         self.assertEqual(len(self.archive.agent_memory('test-room', self.agent.prompt_hash)), 1)
+
+
+class DirectAudioTests(AgentTests):
+    def test_recording_not_transcript_reaches_model(self):
+        event = self.event(kind='audio', text='THIS MUST NOT REACH THE MODEL', language_mode='en')
+        result = self.agent.decide(event)
+        payload = self.agent.request.call_args.args[0]
+        self.assertEqual(Path(payload['audio_path']).read_bytes(), b'fixture-wav')
+        self.assertNotIn('THIS MUST NOT REACH THE MODEL', payload['prompt'])
+        self.assertNotIn('audio_features', payload['prompt'])
+        self.assertEqual(result['input_representation'], 'audio_embeddings')
+        self.assertFalse(result['transcription'])
+
+    def test_fixed_chinese_response_without_transcript(self):
+        self.agent.request.return_value = self.output('我在这里。')
+        result = self.agent.decide(self.event(kind='audio', text='', language_mode='zh'))
+        self.assertEqual((result['action'], result['language']), ('speak', 'zh'))
+
+    def test_language_modes_do_not_share_history(self):
+        self.agent.request.return_value = self.output('我在这里。')
+        self.agent.decide(self.event(language_mode='zh'))
+        self.agent.last_reply = -float('inf')
+        self.agent.request.return_value = self.output('Hello.')
+        self.agent.decide(self.event(language_mode='en'))
+        context = json.loads(self.agent.request.call_args.args[0]['prompt'])
+        self.assertEqual(context['response_language'], 'en')
+        self.assertEqual(context['previous_generated_replies'], [])
+        self.agent.last_reply = -float('inf')
+        self.agent.request.return_value = self.output('你好。')
+        self.agent.decide(self.event(language_mode='zh'))
+        context = json.loads(self.agent.request.call_args.args[0]['prompt'])
+        self.assertEqual(context['previous_generated_replies'], ['我在这里。'])
+
+    def test_fixed_mode_overrides_text_script_and_rejects_wrong_reply(self):
+        result = self.agent.decide(self.event(source='text-test', kind='text_input',
+                                             text='你好', language_mode='en'))
+        self.assertEqual((result['action'], result['language']), ('speak', 'en'))
+        self.agent.request.return_value = self.output('你好。')
+        result = self.agent.decide(self.event(source='text-test', kind='text_input', language_mode='en'))
+        self.assertEqual(result['action'], 'error')
+        self.assertEqual(result['text'], '')
+
+    def test_auto_mode_is_rejected(self):
+        with self.assertRaises(ValueError):
+            self.agent.decide(self.event(language_mode='auto'))
+        self.agent.request.assert_not_called()
+        self.assertFalse(self.agent.busy)
+
+    def test_missing_audio_cannot_fall_back_to_text(self):
+        event = self.event(kind='audio')
+        Path(self.archive.root / event['audio']).unlink()
+        result = self.agent.decide(event)
+        self.assertEqual(result['action'], 'error')
+        self.agent.request.assert_not_called()
+
+    def test_audio_cannot_escape_archive(self):
+        event = self.event(kind='audio', audio='../outside.wav')
+        event['audio'] = '../outside.wav'
+        self.assertEqual(self.agent.decide(event)['action'], 'error')
+        self.agent.request.assert_not_called()
 
 
 if __name__ == '__main__':

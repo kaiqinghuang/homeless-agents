@@ -50,3 +50,10 @@ ggml-*.bin
 *.sqlite3-wal
 *.sqlite3-shm
 *.db
+
+# Isolated direct-audio Python runtime
+.venv-audio/
+
+# Local image study folders (large PNG/PSD drafts)
+0.1/
+0.2/
