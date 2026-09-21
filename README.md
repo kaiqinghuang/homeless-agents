@@ -66,6 +66,7 @@ python3 -m unittest test_agent test_audio_decision test_direct_audio_http test_m
 node test_agent_ui.cjs
 node test_language_switch.cjs
 node test_playback.cjs
+node test_faces.cjs
 ```
 
 These cover waveform upload without an ASR engine, passing the archived WAV to inference (never its transcript), language policy, gates, errors, history isolation, cancellation, private file access and response-to-phoneme playback. Real GPU inference must also be tested from a normal local session.
@@ -78,4 +79,4 @@ Fixed-mode regression: English → Mandarin → English audio produced “Yellow
 
 ### Portrait composition
 
-The active image is the 1184 × 666 multi-face composition. Only the original central face is animated; shader sampling outside its face region is unchanged. Mouth calibration and the four cheek guides on each side were registered to the central face (approximately 1.02955× scale plus translation). Existing pace, mouth amount and OO/OH shapes are retained. The earlier single-face image is backed up as `assets/portrait-original.png`. Reload the browser after replacing visual assets; no model restart is needed.
+The active image is the 3840 × 2160 multi-face composition from `0.2/rgthree.compare._2.jpg` (converted to PNG for the existing asset endpoint). Canvas and texture use the full 4K resolution; animation retains its 1184 × 666 calibration space so mouth movement and guide dots keep their previous apparent sizes. All 12 faces with visible mouths are animated together from the same phoneme timeline; the partial object cropped at the top has no visible mouth and remains static. Each face has a manually calibrated mouth center, width, tilt, curvature and local animation boundary. The guide toggle shows lip anchors and four cheek anchors on each side of every face; small faces use proportionally smaller dots. Inspect face keeps the existing central-face zoom. One full-resolution background pass is followed by scissored local face passes, covering about 12.4% additional image area; one guide array is reused per face to avoid oversized GPU uniform arrays. No additional AI model or inference calls are introduced. Existing pace, mouth amount and OO/OH shapes are retained. The earlier single-face image is backed up as `assets/portrait-original.png`. Reload the browser after replacing visual assets; no model restart is needed.
