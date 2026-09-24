@@ -67,7 +67,10 @@ const GUIDE_COUNT=21;
 const guidePoints=new Float32Array(GUIDE_COUNT*2);
 function faceToImage(g,x,y){const c=Math.cos(g.angle),s=Math.sin(g.angle);return [g.x+c*x-s*y,g.y+s*x+c*y];}
 function faceScissor(g,crop,width,height){
- const [l,t,r,b]=g.bounds,points=[[l,t],[r,t],[l,b],[r,b]].map(([x,y])=>faceToImage(g,x,y));
+ const [l,t,r,b]=g.bounds;
+ const points=g.spriteBounds
+  ? [[g.spriteBounds[0],g.spriteBounds[1]],[g.spriteBounds[2],g.spriteBounds[3]]]
+  : [[l,t],[r,t],[l,b],[r,b]].map(([x,y])=>faceToImage(g,x,y));
  const px=x=>(x/calibrationSize[0]-crop[0])/crop[2]*width;
  const py=y=>(y/calibrationSize[1]-crop[1])/crop[3]*height;
  const x0=Math.max(0,Math.floor(px(Math.min(...points.map(p=>p[0])))));
@@ -94,11 +97,11 @@ const centralHeadOutline=[
  [205,498],[198,440],[197,380],[203,318],[215,258],
  [237,202],[271,155],[317,117],[368,89],[421,73],[469,63]
 ];
-function makeCentralHeadMask(){
+function makeHeadMask(outline){
  const mask=document.createElement('canvas');mask.width=mask.height=1024;
  const ctx=mask.getContext('2d');
  ctx.fillStyle='#000';ctx.fillRect(0,0,1024,1024);
- ctx.beginPath();centralHeadOutline.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();
+ ctx.beginPath();outline.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();
  ctx.save();ctx.clip();ctx.fillStyle='#fff';ctx.fill();
  // Paint nested edge strokes, clipped to the silhouette. No blur can leak
  // outward onto the ground; the 8px feather lies entirely inside the head.
@@ -109,13 +112,14 @@ function makeCentralHeadMask(){
  }
  ctx.restore();return mask;
 }
+function makeCentralHeadMask(){return makeHeadMask(centralHeadOutline);}
 const centralTextures={};
-let boundCentralPose=null;
-function loadPoseImage(file){
+let boundSpriteKey=null;
+function loadPoseImage(file,folder){
  return new Promise((resolve,reject)=>{
   const image=new Image();image.onload=()=>resolve(image);
   image.onerror=()=>reject(new Error('Mouth images could not load. Restart Start.command, then refresh. / 请重启 Start.command 后刷新，加载嘴形图片。'));
-  image.src='assets/central-visemes-v1/'+file+'.png?v=1';
+  image.src='assets/'+folder+'/'+file+'.png?v=1';
  });
 }
 function uploadTexture(image){
@@ -133,13 +137,61 @@ const centralLipAnchors={
  F:[451,780,595,783,501,754,501,785],G:[403,780,625,783,510,761,510,765],
  H:[394,780,618,791,559,754,559,787]
 };
-function centralGuides(pose){
- const [lx,ly,rx,ry,tx,ty,bx,by]=centralLipAnchors[pose];
+// This face has its own art direction: vacant fatigue, a heavier left lid,
+// and slack, offset lips. It never reuses the central face's generated stills.
+const redEyesHeadOutline=[
+ [437,185],[502,183],[565,192],[621,211],[671,242],[706,278],
+ [728,320],[733,370],[730,430],[730,491],[725,548],[728,592],
+ [740,608],[750,637],[749,672],[739,696],[721,710],[706,705],
+ [697,752],[682,803],[657,850],[625,887],[585,918],[549,935],
+ [501,936],[459,922],[417,902],[384,872],[354,826],[330,777],
+ [312,723],[301,669],[293,610],[293,544],[293,483],[295,427],
+ [307,377],[328,335],[340,296],[352,260],[373,230],[399,205]
+];
+const redEyesLipAnchors={
+ X:[447,801,625,805,534,786,534,790],A:[449,799,625,802,531,780,531,783],
+ B:[454,799,618,779,533,780,533,792],C:[457,802,617,801,531,775,531,797],
+ D:[467,802,610,800,531,771,531,803],E:[473,802,610,801,535,773,535,802],
+ F:[480,801,614,803,529,783,529,801],G:[448,800,620,800,527,781,527,787],
+ H:[454,801,622,785,569,770,559,789]
+};
+// The brown face swallows its words: small, locally folded lips with
+// different eye/brow/cheek tension per still, not a mirrored diagonal pull.
+const brownHeadOutline=[
+ [448,125],[505,118],[566,128],[628,159],[682,204],[725,254],
+ [744,312],[742,370],[724,432],[708,466],[725,478],[731,501],
+ [724,536],[708,563],[685,582],[663,585],[649,622],[628,664],
+ [603,701],[573,732],[537,748],[501,756],[471,746],[438,723],
+ [411,693],[388,651],[363,606],[351,563],[337,551],[330,535],
+ [332,517],[343,500],[352,483],[350,440],[338,405],[328,366],
+ [326,317],[342,270],[366,227],[390,185],[417,150]
+];
+const brownLipAnchors={
+ X:[448,666,568,670,509,663,509,666],A:[448,658,567,665,508,660,508,662],
+ B:[450,652,567,665,498,656,498,660],C:[450,654,559,667,510,659,510,662],
+ D:[448,657,564,672,508,657,508,667],E:[454,661,567,667,506,651,506,663],
+ F:[457,660,565,665,511,657,511,665],G:[448,653,565,665,509,659,509,661],
+ H:[450,654,563,668,509,653,509,662]
+};
+const spriteFaces={
+ central:{face:centralFace,folder:'central-visemes-v1',origin:[1824,752],rect:centralSpriteRect,outline:centralHeadOutline,lipAnchors:centralLipAnchors,textures:centralTextures,mask:null},
+ 'red-eyes':{face:faces.find(g=>g.id==='red-eyes'),folder:'red-eyes-visemes-v1',origin:[2688,256],rect:[2688/4608,256/2592,1024/4608,1024/2592],outline:redEyesHeadOutline,lipAnchors:redEyesLipAnchors,textures:{},mask:null},
+ 'lower-right':{face:faces.find(g=>g.id==='lower-right'),folder:'brown-face-visemes-v1',origin:[2560,1408],rect:[2560/4608,1408/2592,1024/4608,1024/2592],outline:brownHeadOutline,lipAnchors:brownLipAnchors,textures:{},mask:null}
+};
+for(const config of Object.values(spriteFaces)){
+ const xs=config.outline.map(p=>p[0]),ys=config.outline.map(p=>p[1]),[x,y]=config.origin;
+ // Limit the draw pass to the head silhouette's bounds, with a 1px margin.
+ config.face.spriteBounds=[(x+Math.min(...xs)-1)*1184/4608,(y+Math.min(...ys)-1)*666/2592,
+  (x+Math.max(...xs)+1)*1184/4608,(y+Math.max(...ys)+1)*666/2592];
+}
+function centralGuides(pose){return imagePoseGuides(centralFace,pose);}
+function imagePoseGuides(g,pose){
+ const config=spriteFaces[g.id];
+ const [lx,ly,rx,ry,tx,ty,bx,by]=config.lipAnchors[pose];
  const lip=[[.5*(lx+rx),.5*(ty+by)],[lx,ly],[rx,ry],
   [.4*lx+.6*tx,.4*ly+.6*ty],[tx,ty],[.4*rx+.6*tx,.4*ry+.6*ty],
   [.4*lx+.6*bx,.4*ly+.6*by],[bx,by],[.4*rx+.6*bx,.4*ry+.6*by]]
-  .map(([x,y])=>[(1824+x)*1184/4608,(752+y)*666/2592]);
- const g=centralFace;
+  .map(([x,y])=>[(config.origin[0]+x)*1184/4608,(config.origin[1]+y)*666/2592]);
  const skin=[[-g.falloffX,0],[g.falloffX,0],[0,-g.falloffY],[0,g.falloffY],...g.cheeks].map(([x,y])=>faceToImage(g,x,y));
  guidePoints.set([...lip,...skin].flat());return guidePoints;
 }
@@ -171,7 +223,10 @@ void main(){
  if(activeFace>1.5){
   vec2 t=(p/resolution-spriteRect.xy)/spriteRect.zw;
   // The whole face changes, but the fixed inset silhouette excludes all soil.
-  float mask=texture2D(headMask,t).r*spriteVisible;
+  float coverage=texture2D(headMask,t).r;
+  // A later head pass must never paint original ground over an earlier face.
+  if(coverage<=0.0)discard;
+  float mask=coverage*spriteVisible;
   vec3 col=mix(texture2D(photo,p/resolution).rgb,texture2D(posePhoto,t).rgb,mask);
   gl_FragColor=vec4(withGuides(col,p),1.0);return;
  }
@@ -214,12 +269,14 @@ async function setup(image){
  gl.activeTexture(gl.TEXTURE0);uploadTexture(image);
  uniforms=Object.fromEntries(['photo','posePhoto','headMask','spriteRect','spriteVisible','resolution','mouth','amount','crop','showGuides','guideRadius','guidePoints[0]','activeFace','geometry','dynamics','axis','faceBounds','softness'].map(k=>[k,gl.getUniformLocation(program,k)]));
  gl.uniform1i(uniforms.photo,0);gl.uniform1i(uniforms.posePhoto,1);gl.uniform1i(uniforms.headMask,2);
- gl.activeTexture(gl.TEXTURE2);uploadTexture(makeCentralHeadMask());gl.activeTexture(gl.TEXTURE0);
+ gl.activeTexture(gl.TEXTURE2);
+ for(const config of Object.values(spriteFaces))config.mask=uploadTexture(makeHeadMask(config.outline));
+ gl.activeTexture(gl.TEXTURE0);
  gl.uniform4fv(uniforms.spriteRect,centralSpriteRect);
  $('status').textContent='Loading mouth images… / 正在加载嘴形图片';
- const images=await Promise.all(Object.entries(centralPoseFiles).map(async([key,file])=>[key,await loadPoseImage(file)]));
+ const images=await Promise.all(Object.values(spriteFaces).flatMap(config=>Object.entries(centralPoseFiles).map(async([key,file])=>[config,key,await loadPoseImage(file,config.folder)])));
  gl.activeTexture(gl.TEXTURE1);
- for(const [key,image] of images)centralTextures[key]=uploadTexture(image);
+ for(const [config,key,image] of images)config.textures[key]=uploadTexture(image);
  gl.activeTexture(gl.TEXTURE0);
  gl.uniform2f(uniforms.resolution,...calibrationSize);gl.viewport(0,0,canvas.width,canvas.height);
  state.ready=true;$('play').disabled=false;$('status').textContent='Ready · 等待输入';
@@ -267,11 +324,17 @@ function draw(){
  for(const g of faces){
   const rect=faceScissor(g,crop,canvas.width,canvas.height);if(!rect)continue;
   gl.scissor(...rect);
-  const isCentral=g===centralFace;
-  gl.uniform1f(uniforms.activeFace,isCentral?2:1);
+  const sprite=spriteFaces[g.id];
+  gl.uniform1f(uniforms.activeFace,sprite?2:1);
   const pose=state.pose;
-  if(isCentral){
-   if(boundCentralPose!==pose){gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,centralTextures[pose]);gl.activeTexture(gl.TEXTURE0);boundCentralPose=pose;}
+  if(sprite){
+   const key=g.id+':'+pose;
+   if(boundSpriteKey!==key){
+    gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,sprite.textures[pose]);
+    gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,sprite.mask);
+    gl.activeTexture(gl.TEXTURE0);boundSpriteKey=key;
+   }
+   gl.uniform4fv(uniforms.spriteRect,sprite.rect);
    gl.uniform1f(uniforms.spriteVisible,pose==='X'?0:1);
   }
   gl.uniform4fv(uniforms.geometry,[g.x,g.y,g.halfWidth,g.falloffX]);
@@ -279,7 +342,7 @@ function draw(){
   gl.uniform2f(uniforms.axis,Math.cos(g.angle),Math.sin(g.angle));
   gl.uniform4fv(uniforms.faceBounds,g.bounds);gl.uniform1f(uniforms.softness,g.softness);
   if(state.guides){
-   gl.uniform2fv(uniforms['guidePoints[0]'],isCentral?centralGuides(pose):updateGuides(g));
+   gl.uniform2fv(uniforms['guidePoints[0]'],sprite?imagePoseGuides(g,pose):updateGuides(g));
    gl.uniform1f(uniforms.guideRadius,crop[2]*calibrationSize[0]/displayedWidth*2.6*.75*Math.max(.3,Math.min(1,g.softness)));
   }
   gl.drawArrays(gl.TRIANGLES,0,6);

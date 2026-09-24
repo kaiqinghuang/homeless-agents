@@ -33,15 +33,15 @@ class DirectAudioHTTPTests(unittest.TestCase):
                 with urllib.request.urlopen(request) as response:
                     return json.load(response)
             try:
-                # Asset allowlist admits the 9 shipped stills, never arbitrary
+                # Asset allowlist admits the 27 shipped stills, never arbitrary
                 # files alongside them or path traversal into recordings.
-                for path in sorted(p for p in STATIC_PATHS if 'central-visemes' in p):
+                for path in sorted(p for p in STATIC_PATHS if '-visemes-v1/' in p):
                     with urllib.request.urlopen(url + path + '?v=1') as response:
                         self.assertEqual(response.headers.get_content_type(), 'image/png')
                         self.assertTrue(response.read().startswith(b'\x89PNG\r\n\x1a\n'))
                     with urllib.request.urlopen(urllib.request.Request(url + path, method='HEAD')) as response:
                         self.assertGreater(int(response.headers['Content-Length']), 0)
-                for path in ('/assets/central-visemes-v1/prompts.json', '/assets/central-visemes-v1/../../server.py'):
+                for path in ('/assets/brown-face-visemes-v1/prompts.json', '/assets/red-eyes-visemes-v1/prompts.json', '/assets/central-visemes-v1/prompts.json', '/assets/central-visemes-v1/../../server.py'):
                     with self.assertRaises(urllib.error.HTTPError) as rejected:
                         urllib.request.urlopen(url + path)
                     self.assertEqual(rejected.exception.code, 404)

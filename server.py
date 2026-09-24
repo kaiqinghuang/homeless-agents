@@ -14,8 +14,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 STATIC_PATHS = {'/', '/index.html', '/app.js', '/agent.js', '/listening.js', '/audio-capture.js', '/listening.css', '/assets/portrait.png'}
-STATIC_PATHS.update('/assets/central-visemes-v1/' + name + '.png' for name in (
-    '00-rest', '01-pressed', '02-wide', '03-parted', '04-open', '05-oh', '06-oo', '07-fold', '08-skew'))
+STATIC_PATHS.update('/assets/' + folder + '/' + name + '.png'
+    for folder in ('central-visemes-v1', 'red-eyes-visemes-v1', 'brown-face-visemes-v1')
+    for name in ('00-rest', '01-pressed', '02-wide', '03-parted', '04-open', '05-oh', '06-oo', '07-fold', '08-skew'))
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
