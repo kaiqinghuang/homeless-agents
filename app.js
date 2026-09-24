@@ -176,11 +176,20 @@ const brownLipAnchors={
 // Fourth face: slipping lip layers inside the fixed hood. Authored at 2x source size.
 const smallLeftHeadOutline=[[379,224],[439,202],[497,212],[531,244],[545,280],[541,308],[575,329],[611,358],[642,398],[668,440],[685,483],[698,526],[698,561],[680,594],[661,619],[660,658],[652,705],[635,750],[606,791],[564,824],[522,846],[480,860],[447,850],[421,822],[401,789],[380,746],[363,696],[347,644],[332,590],[318,535],[309,481],[307,432],[303,388],[301,342],[318,295],[349,253]];
 const smallLeftLipAnchors={"X":[440,686,629,680,541,657,541,663],"A":[442,683,627,677,548,656,548,660],"B":[441,684,625,680,538,655,538,666],"C":[443,683,623,678,542,658,542,666],"D":[443,684,623,680,541,652,541,666],"E":[446,682,623,678,551,650,551,663],"F":[445,683,625,679,544,649,544,668],"G":[442,682,624,678,540,654,540,659],"H":[442,683,624,679,538,656,538,662]};
+// Fifth face: watchful painted hood, asymmetric lip folds and unequal eyelid tension.
+const lowerHoodHeadOutline=[[433,200],[480,194],[525,211],[568,246],[612,265],[648,304],[673,358],[678,402],[690,437],[686,487],[679,533],[669,581],[655,628],[635,670],[606,700],[572,718],[537,726],[502,716],[470,699],[441,674],[419,642],[400,600],[386,552],[376,504],[367,458],[359,414],[351,374],[350,332],[361,288],[382,248],[407,219]];
+const lowerHoodLipAnchors={"X":[469,574,637,564,560,529,560,548],"A":[467,573,632,563,561,528,561,531],"B":[482,555,640,555,559,524,559,548],"C":[470,570,632,565,558,530,558,546],"D":[474,573,635,569,560,521,560,550],"E":[478,572,631,566,562,526,562,560],"F":[475,570,634,566,554,527,554,541],"G":[477,553,632,555,557,518,557,521],"H":[480,557,635,565,550,524,550,538]};
+const lowerHoodVariants={"B":[{"key":"extra:09-wide-initial","file":"09-wide-initial","folder":"lower-hood-visemes-v1","anchors":[483,554,637,555,559,530,559,539]}],"D":[{"key":"extra:10-open-initial","file":"10-open-initial","folder":"lower-hood-visemes-v1","anchors":[475,572,635,568,560,523,560,547]}],"E":[{"key":"extra:11-oh-initial","file":"11-oh-initial","folder":"lower-hood-visemes-v1","anchors":[481,572,635,566,560,531,560,554]}],"G":[{"key":"extra:12-fold-initial","file":"12-fold-initial","folder":"lower-hood-visemes-v1","anchors":[475,561,634,558,559,521,559,525]},{"key":"extra:13-fold-intermediate","file":"13-fold-intermediate","folder":"lower-hood-visemes-v1","anchors":[484,558,635,557,560,522,560,545]}]};
 const redEyesFirstVariants={"A":[{"key":"first:01-pressed","file":"01-pressed","folder":"red-eyes-first11","anchors":[449,799,627,801,536,780,536,782]}],"B":[{"key":"first:02-wide","file":"02-wide","folder":"red-eyes-first11","anchors":[447,796,624,779,535,783,535,790]},{"key":"first:12-wide-expression","file":"12-wide-expression","folder":"red-eyes-first11","anchors":[450,796,625,793,537,776,537,786]}],"C":[{"key":"first:03-parted-initial","file":"03-parted-initial","folder":"red-eyes-first11","anchors":[447,800,625,799,538,778,538,793]},{"key":"first:10-parted-expression","file":"10-parted-expression","folder":"red-eyes-first11","anchors":[457,802,617,801,531,775,531,797]}],"D":[{"key":"first:04-open","file":"04-open","folder":"red-eyes-first11","anchors":[457,801,619,800,533,770,533,804]}],"E":[{"key":"first:05-oh","file":"05-oh","folder":"red-eyes-first11","anchors":[460,801,618,794,535,774,535,798]}],"F":[{"key":"first:06-oo-initial","file":"06-oo-initial","folder":"red-eyes-first11","anchors":[476,798,612,800,540,780,540,797]},{"key":"first:09-oo-expression","file":"09-oo-expression","folder":"red-eyes-first11","anchors":[480,801,614,803,529,783,529,801]}],"G":[{"key":"first:07-fold","file":"07-fold","folder":"red-eyes-first11","anchors":[448,800,626,802,534,782,534,787]}],"H":[{"key":"first:08-skew-initial","file":"08-skew-initial","folder":"red-eyes-first11","anchors":[449,807,623,788,535,775,535,795]},{"key":"first:11-skew-expression","file":"11-skew-expression","folder":"red-eyes-first11","anchors":[453,801,620,788,539,779,539,788]}]};
+// Sixth face: quiet clay, tiny uneven lip seams; native crop authored at 8/3 scale.
+const clayLowerHeadOutline=[[348,430],[388,431],[432,422],[473,436],[512,433],[548,426],[588,424],[626,409],[663,397],[698,426],[714,458],[714,505],[708,549],[700,596],[685,644],[663,689],[638,734],[612,766],[579,785],[543,797],[506,790],[470,772],[442,745],[416,712],[394,674],[375,632],[359,585],[348,541],[343,496]];
+const clayLowerLipAnchors={"X":[472,691,599,685,533,684,533,688],"A":[474,689,598,684,533,685,533,687],"B":[463,689,600,685,533,682,533,686],"C":[475,689,595,687,510,682,510,691],"D":[475,691,592,688,535,686,535,698],"E":[483,689,588,688,538,684,538,695],"F":[483,690,591,687,540,689,540,703],"G":[475,690,595,684,530,685,530,688],"H":[475,690,595,686,533,690,533,699]};
 const spriteFaces={
+ 'clay-lower':{face:faces.find(g=>g.id==='clay-lower'),folder:'clay-lower-visemes-v1',origin:[2240,1920],sourceScale:.375,rect:[2240/4608,1920/2592,384/4608,384/2592],outline:clayLowerHeadOutline,lipAnchors:clayLowerLipAnchors,textures:{},mask:null},
  central:{face:centralFace,folder:'central-visemes-v1',origin:[1824,752],rect:centralSpriteRect,outline:centralHeadOutline,lipAnchors:centralLipAnchors,textures:centralTextures,mask:null},
  'red-eyes':{face:faces.find(g=>g.id==='red-eyes'),folder:'red-eyes-visemes-v1',version:6,variants:redEyesFirstVariants,origin:[2688,256],rect:[2688/4608,256/2592,1024/4608,1024/2592],outline:redEyesHeadOutline,lipAnchors:redEyesLipAnchors,textures:{},mask:null},
  'small-left':{face:faces.find(g=>g.id==='small-left'),folder:'small-left-visemes-v1',origin:[1408,1248],sourceScale:.5,rect:[1408/4608,1248/2592,512/4608,512/2592],outline:smallLeftHeadOutline,lipAnchors:smallLeftLipAnchors,textures:{},mask:null},
+ 'lower-hood':{face:faces.find(g=>g.id==='lower-hood'),folder:'lower-hood-visemes-v1',variants:lowerHoodVariants,baseProbability:{B:.5,D:.5,E:.5,G:1/3},origin:[1792,1760],sourceScale:.5,rect:[1792/4608,1760/2592,512/4608,512/2592],outline:lowerHoodHeadOutline,lipAnchors:lowerHoodLipAnchors,textures:{},mask:null},
  'lower-right':{face:faces.find(g=>g.id==='lower-right'),folder:'brown-face-visemes-v1',origin:[2560,1408],rect:[2560/4608,1408/2592,1024/4608,1024/2592],outline:brownHeadOutline,lipAnchors:brownLipAnchors,textures:{},mask:null}
 };
 for(const config of Object.values(spriteFaces)){
@@ -190,14 +199,15 @@ for(const config of Object.values(spriteFaces)){
   (x+Math.max(...xs)*scale+1)*1184/4608,(y+Math.max(...ys)*scale+1)*666/2592];
 }
 // Choose once per phoneme cue (including repeated same-shape cues), never per frame.
-// Current set has 70% weight; original candidates split the first set's 30%.
+// Red eyes retains 70/30 set weighting; other faces may define per-pose probabilities.
 function spritePose(config,pose){
  const base={key:pose,anchors:config.lipAnchors[pose]};
- if(!config.variants||pose==='X')return base;
+ const candidates=config.variants?.[pose];
+ if(pose==='X'||!candidates?.length)return base;
  const previous=config.selection;
  if(previous&&previous.pose===pose&&previous.revision===state.poseRevision)return previous;
- const candidates=config.variants[pose];
- const selected=Math.random()<.7?base:candidates[Math.floor(Math.random()*candidates.length)];
+ const probability=config.baseProbability?.[pose]??.7;
+ const selected=Math.random()<probability?base:candidates[Math.floor(Math.random()*candidates.length)];
  config.selection={...selected,pose,revision:state.poseRevision};return config.selection;
 }
 function centralGuides(pose){return imagePoseGuides(centralFace,pose);}

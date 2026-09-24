@@ -37,3 +37,11 @@ Nearest small hooded face left of the central head (`small-left`). User requests
 Latest user selection supersedes earlier storage/activation notes above: keep the current red-eyes-visemes-v1 set and restore all eleven original generated images (8 base plus early EH/OO/L expressions) in red-eyes-first11. Choose the earliest first11 set with 30% probability and the current set with 70% for each phoneme cue; choose corresponding candidates only and hold the selected image for the cue. Other red-face backups are removed from the project to macOS Trash. The historical reference names above describe prior art direction, not currently retained project folders.
 
 2026-09-24: add the user-selected restrained v2 Wide image as `red-eyes-first11/12-wide-expression.png`. Keep the folder name. Its two Wide candidates split the collection’s 30% equally (15% each); the current set’s Wide remains 70%. Other selections and masks stay unchanged.
+
+Fifth face / lower-hood: tiny black-silver painted hooded face below-right of the fourth. User requests more conspicuous, varied and asymmetric expressions than face four. Its character is watchful unease with localized buckled lips and unequal eyelid/cheek tension. Eight distinct poses, no teeth or tongue, fixed outer head/hood/neck/ground, direct image switching.
+
+Latest fifth-face selection: user enabled all 13 generated images, including the initial and intermediate corrections. Paired EE/AH/OH poses split 50/50. F/V has three variants; user explicitly chose equal thirds. Keep all candidates in their corresponding pose, resample on each cue, and preserve original rest.
+
+## Sixth face — 2026-09-24
+
+Small brown clay head immediately right of face five (`clay-lower`). More restrained and subtle than prior faces, but still asymmetric and uncanny. Character: quiet uneven lip-plane pressure, interrupted hairline seams, shallow central dimples and tiny notched openings. Preserve blank closed eyes without adding pupils; no teeth or tongue. Eight distinct stills plus original rest, fixed exterior/hair/neck/ground. Library: `assets/clay-lower-visemes-v1`.

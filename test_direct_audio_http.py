@@ -41,7 +41,7 @@ class DirectAudioHTTPTests(unittest.TestCase):
                         self.assertTrue(response.read().startswith(b'\x89PNG\r\n\x1a\n'))
                     with urllib.request.urlopen(urllib.request.Request(url + path, method='HEAD')) as response:
                         self.assertGreater(int(response.headers['Content-Length']), 0)
-                for path in ('/assets/small-left-visemes-v1/prompts.json', '/assets/red-eyes-first11/manifest.json', '/assets/brown-face-visemes-v1/prompts.json', '/assets/red-eyes-visemes-v1/prompts.json', '/assets/central-visemes-v1/prompts.json', '/assets/central-visemes-v1/../../server.py'):
+                for path in ('/assets/lower-hood-visemes-v1/prompts.json', '/assets/small-left-visemes-v1/prompts.json', '/assets/red-eyes-first11/manifest.json', '/assets/brown-face-visemes-v1/prompts.json', '/assets/red-eyes-visemes-v1/prompts.json', '/assets/central-visemes-v1/prompts.json', '/assets/central-visemes-v1/../../server.py'):
                     with self.assertRaises(urllib.error.HTTPError) as rejected:
                         urllib.request.urlopen(url + path)
                     self.assertEqual(rejected.exception.code, 404)
