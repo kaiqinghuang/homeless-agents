@@ -37,21 +37,27 @@ run('draw=()=>{};state.ready=true;');
   assert.equal(get('readout').children.map(e=>e.textContent).join(''),get('text').value);
   assert.match(get('meta').textContent,/PHONEMES/);
   assert.equal(get('pronunciation').children.length,p.words.length);
+  let revision=run("state.poseRevision");
   for(const [index,cue] of scaled.timeline.entries()){
    run(`frame(${1000+(cue.start+cue.end)*500})`);
    assert.equal(get('readout').children.findIndex(e=>e.classList.current),cue.word);
    assert.equal(run('lastCue'),index);
-   assert.equal(run('state.pose'),cue.shape,'image pose must switch directly to the active cue');checked++;
+   const subtitle=cue.word<0?'':scaled.words[cue.word].text.trim().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,'');
+   assert.equal(get('word-subtitle').textContent,subtitle,'caption follows current word and clears on pauses');
+   assert.equal(run('state.pose'),cue.shape,'image pose must switch directly to the active cue');
+   assert.equal(run('state.poseRevision'),++revision,'each cue requests one image selection');
+   run(`frame(${1000+(cue.start+cue.end)*500})`);assert.equal(run('state.poseRevision'),revision,'same cue frame must not resample');checked++;
   }
   run(`frame(${1000+scaled.duration*1000+10})`);
   assert.equal(run('state.playing'),false);
+  assert.equal(get('word-subtitle').textContent,'','finished caption clears');
   assert.equal(run('state.pose'),'X');
   assert.equal(get('readout').children.some(e=>e.classList.current),false);
  }
  currentPlan=plans[0];await run('window.afterimageMotion.echo("Make a face.")');
  assert.equal(sent.at(-1).text,'Make a face.');
  assert.equal(await run('window.afterimageMotion.echo("later transcript")'),false);
- assert.equal(get('text').value,'Make a face.');run('stop()');assert.equal(run('state.pose'),'X');
+ assert.equal(get('text').value,'Make a face.');run('stop()');assert.equal(run('state.pose'),'X');assert.equal(get('word-subtitle').textContent,'');
  let release;pending=new Promise(resolve=>{release=resolve;});
  const loading=run('play()');run('stop()');
  release({ok:true,json:async()=>plans[0]});await loading;

@@ -115,11 +115,11 @@ function makeHeadMask(outline){
 function makeCentralHeadMask(){return makeHeadMask(centralHeadOutline);}
 const centralTextures={};
 let boundSpriteKey=null;
-function loadPoseImage(file,folder){
+function loadPoseImage(file,folder,version=1){
  return new Promise((resolve,reject)=>{
   const image=new Image();image.onload=()=>resolve(image);
   image.onerror=()=>reject(new Error('Mouth images could not load. Restart Start.command, then refresh. / 请重启 Start.command 后刷新，加载嘴形图片。'));
-  image.src='assets/'+folder+'/'+file+'.png?v=1';
+  image.src='assets/'+folder+'/'+file+'.png?v='+version;
  });
 }
 function uploadTexture(image){
@@ -137,8 +137,8 @@ const centralLipAnchors={
  F:[451,780,595,783,501,754,501,785],G:[403,780,625,783,510,761,510,765],
  H:[394,780,618,791,559,754,559,787]
 };
-// This face has its own art direction: vacant fatigue, a heavier left lid,
-// and slack, offset lips. It never reuses the central face's generated stills.
+// Original set restored: level lip folds, subtler AH and original EH/OO brows.
+// The first11 collection plus an extra Wide shares 30% selection probability.
 const redEyesHeadOutline=[
  [437,185],[502,183],[565,192],[621,211],[671,242],[706,278],
  [728,320],[733,370],[730,430],[730,491],[725,548],[728,592],
@@ -149,11 +149,11 @@ const redEyesHeadOutline=[
  [307,377],[328,335],[340,296],[352,260],[373,230],[399,205]
 ];
 const redEyesLipAnchors={
- X:[447,801,625,805,534,786,534,790],A:[449,799,625,802,531,780,531,783],
- B:[454,799,618,779,533,780,533,792],C:[457,802,617,801,531,775,531,797],
- D:[467,802,610,800,531,771,531,803],E:[473,802,610,801,535,773,535,802],
- F:[480,801,614,803,529,783,529,801],G:[448,800,620,800,527,781,527,787],
- H:[454,801,622,785,569,770,559,789]
+ X:[447,801,625,805,534,786,534,790],A:[449,800,625,800,536,780,536,782],
+ B:[454,796,616,796,535,781,535,792],C:[457,802,617,801,531,775,531,797],
+ D:[453,801,615,801,535,769,535,800],E:[473,802,610,802,535,773,535,802],
+ F:[480,801,614,803,529,783,529,801],G:[448,800,620,800,536,782,536,786],
+ H:[453,799,619,799,535,775,535,788]
 };
 // The brown face swallows its words: small, locally folded lips with
 // different eye/brow/cheek tension per still, not a mirrored diagonal pull.
@@ -173,30 +173,46 @@ const brownLipAnchors={
  F:[457,660,565,665,511,657,511,665],G:[448,653,565,665,509,659,509,661],
  H:[450,654,563,668,509,653,509,662]
 };
+// Fourth face: slipping lip layers inside the fixed hood. Authored at 2x source size.
+const smallLeftHeadOutline=[[379,224],[439,202],[497,212],[531,244],[545,280],[541,308],[575,329],[611,358],[642,398],[668,440],[685,483],[698,526],[698,561],[680,594],[661,619],[660,658],[652,705],[635,750],[606,791],[564,824],[522,846],[480,860],[447,850],[421,822],[401,789],[380,746],[363,696],[347,644],[332,590],[318,535],[309,481],[307,432],[303,388],[301,342],[318,295],[349,253]];
+const smallLeftLipAnchors={"X":[440,686,629,680,541,657,541,663],"A":[442,683,627,677,548,656,548,660],"B":[441,684,625,680,538,655,538,666],"C":[443,683,623,678,542,658,542,666],"D":[443,684,623,680,541,652,541,666],"E":[446,682,623,678,551,650,551,663],"F":[445,683,625,679,544,649,544,668],"G":[442,682,624,678,540,654,540,659],"H":[442,683,624,679,538,656,538,662]};
+const redEyesFirstVariants={"A":[{"key":"first:01-pressed","file":"01-pressed","folder":"red-eyes-first11","anchors":[449,799,627,801,536,780,536,782]}],"B":[{"key":"first:02-wide","file":"02-wide","folder":"red-eyes-first11","anchors":[447,796,624,779,535,783,535,790]},{"key":"first:12-wide-expression","file":"12-wide-expression","folder":"red-eyes-first11","anchors":[450,796,625,793,537,776,537,786]}],"C":[{"key":"first:03-parted-initial","file":"03-parted-initial","folder":"red-eyes-first11","anchors":[447,800,625,799,538,778,538,793]},{"key":"first:10-parted-expression","file":"10-parted-expression","folder":"red-eyes-first11","anchors":[457,802,617,801,531,775,531,797]}],"D":[{"key":"first:04-open","file":"04-open","folder":"red-eyes-first11","anchors":[457,801,619,800,533,770,533,804]}],"E":[{"key":"first:05-oh","file":"05-oh","folder":"red-eyes-first11","anchors":[460,801,618,794,535,774,535,798]}],"F":[{"key":"first:06-oo-initial","file":"06-oo-initial","folder":"red-eyes-first11","anchors":[476,798,612,800,540,780,540,797]},{"key":"first:09-oo-expression","file":"09-oo-expression","folder":"red-eyes-first11","anchors":[480,801,614,803,529,783,529,801]}],"G":[{"key":"first:07-fold","file":"07-fold","folder":"red-eyes-first11","anchors":[448,800,626,802,534,782,534,787]}],"H":[{"key":"first:08-skew-initial","file":"08-skew-initial","folder":"red-eyes-first11","anchors":[449,807,623,788,535,775,535,795]},{"key":"first:11-skew-expression","file":"11-skew-expression","folder":"red-eyes-first11","anchors":[453,801,620,788,539,779,539,788]}]};
 const spriteFaces={
  central:{face:centralFace,folder:'central-visemes-v1',origin:[1824,752],rect:centralSpriteRect,outline:centralHeadOutline,lipAnchors:centralLipAnchors,textures:centralTextures,mask:null},
- 'red-eyes':{face:faces.find(g=>g.id==='red-eyes'),folder:'red-eyes-visemes-v1',origin:[2688,256],rect:[2688/4608,256/2592,1024/4608,1024/2592],outline:redEyesHeadOutline,lipAnchors:redEyesLipAnchors,textures:{},mask:null},
+ 'red-eyes':{face:faces.find(g=>g.id==='red-eyes'),folder:'red-eyes-visemes-v1',version:6,variants:redEyesFirstVariants,origin:[2688,256],rect:[2688/4608,256/2592,1024/4608,1024/2592],outline:redEyesHeadOutline,lipAnchors:redEyesLipAnchors,textures:{},mask:null},
+ 'small-left':{face:faces.find(g=>g.id==='small-left'),folder:'small-left-visemes-v1',origin:[1408,1248],sourceScale:.5,rect:[1408/4608,1248/2592,512/4608,512/2592],outline:smallLeftHeadOutline,lipAnchors:smallLeftLipAnchors,textures:{},mask:null},
  'lower-right':{face:faces.find(g=>g.id==='lower-right'),folder:'brown-face-visemes-v1',origin:[2560,1408],rect:[2560/4608,1408/2592,1024/4608,1024/2592],outline:brownHeadOutline,lipAnchors:brownLipAnchors,textures:{},mask:null}
 };
 for(const config of Object.values(spriteFaces)){
- const xs=config.outline.map(p=>p[0]),ys=config.outline.map(p=>p[1]),[x,y]=config.origin;
+ const xs=config.outline.map(p=>p[0]),ys=config.outline.map(p=>p[1]),[x,y]=config.origin,scale=config.sourceScale??1;
  // Limit the draw pass to the head silhouette's bounds, with a 1px margin.
- config.face.spriteBounds=[(x+Math.min(...xs)-1)*1184/4608,(y+Math.min(...ys)-1)*666/2592,
-  (x+Math.max(...xs)+1)*1184/4608,(y+Math.max(...ys)+1)*666/2592];
+ config.face.spriteBounds=[(x+Math.min(...xs)*scale-1)*1184/4608,(y+Math.min(...ys)*scale-1)*666/2592,
+  (x+Math.max(...xs)*scale+1)*1184/4608,(y+Math.max(...ys)*scale+1)*666/2592];
+}
+// Choose once per phoneme cue (including repeated same-shape cues), never per frame.
+// Current set has 70% weight; original candidates split the first set's 30%.
+function spritePose(config,pose){
+ const base={key:pose,anchors:config.lipAnchors[pose]};
+ if(!config.variants||pose==='X')return base;
+ const previous=config.selection;
+ if(previous&&previous.pose===pose&&previous.revision===state.poseRevision)return previous;
+ const candidates=config.variants[pose];
+ const selected=Math.random()<.7?base:candidates[Math.floor(Math.random()*candidates.length)];
+ config.selection={...selected,pose,revision:state.poseRevision};return config.selection;
 }
 function centralGuides(pose){return imagePoseGuides(centralFace,pose);}
 function imagePoseGuides(g,pose){
- const config=spriteFaces[g.id];
- const [lx,ly,rx,ry,tx,ty,bx,by]=config.lipAnchors[pose];
+ const config=spriteFaces[g.id],scale=config.sourceScale??1;
+ const [lx,ly,rx,ry,tx,ty,bx,by]=spritePose(config,pose).anchors;
  const lip=[[.5*(lx+rx),.5*(ty+by)],[lx,ly],[rx,ry],
   [.4*lx+.6*tx,.4*ly+.6*ty],[tx,ty],[.4*rx+.6*tx,.4*ry+.6*ty],
   [.4*lx+.6*bx,.4*ly+.6*by],[bx,by],[.4*rx+.6*bx,.4*ry+.6*by]]
-  .map(([x,y])=>[(config.origin[0]+x)*1184/4608,(config.origin[1]+y)*666/2592]);
+  .map(([x,y])=>[(config.origin[0]+x*scale)*1184/4608,(config.origin[1]+y*scale)*666/2592]);
  const skin=[[-g.falloffX,0],[g.falloffX,0],[0,-g.falloffY],[0,g.falloffY],...g.cheeks].map(([x,y])=>faceToImage(g,x,y));
  guidePoints.set([...lip,...skin].flat());return guidePoints;
 }
 const labels = {X:'Rest',A:'M / B / P',B:'EE',C:'EH',D:'AH',E:'OH',F:'OO',G:'Lip fold · F / V',H:'Skew · L'};
-let state = {ready:false, playing:false, plan:null, start:0, elapsed:0, hold:'X', pose:'X', current:[0,1,0], zoom:false, guides:false, request:0};
+let state = {ready:false, playing:false, plan:null, start:0, elapsed:0, hold:'X', pose:'X', poseRevision:0, current:[0,1,0], zoom:false, guides:false, request:0};
 let program, uniforms, lastFrame=performance.now(), lastWord=-2, lastCue=-1;
 const vertex = `attribute vec2 position; varying vec2 uv; void main(){uv=vec2((position.x+1.0)*0.5,(1.0-position.y)*0.5);gl_Position=vec4(position,0.0,1.0);}`;
 const fragment = `precision highp float;
@@ -274,7 +290,10 @@ async function setup(image){
  gl.activeTexture(gl.TEXTURE0);
  gl.uniform4fv(uniforms.spriteRect,centralSpriteRect);
  $('status').textContent='Loading mouth images… / 正在加载嘴形图片';
- const images=await Promise.all(Object.values(spriteFaces).flatMap(config=>Object.entries(centralPoseFiles).map(async([key,file])=>[config,key,await loadPoseImage(file,config.folder)])));
+ const images=await Promise.all(Object.values(spriteFaces).flatMap(config=>[
+   ...Object.entries(centralPoseFiles).map(async([key,file])=>[config,key,await loadPoseImage(file,config.folder,config.version)]),
+   ...Object.values(config.variants??{}).flat().map(async v=>[config,v.key,await loadPoseImage(v.file,v.folder,1)])
+ ]));
  gl.activeTexture(gl.TEXTURE1);
  for(const [config,key,image] of images)config.textures[key]=uploadTexture(image);
  gl.activeTexture(gl.TEXTURE0);
@@ -328,9 +347,10 @@ function draw(){
   gl.uniform1f(uniforms.activeFace,sprite?2:1);
   const pose=state.pose;
   if(sprite){
-   const key=g.id+':'+pose;
+   const selected=spritePose(sprite,pose);
+   const key=g.id+':'+selected.key;
    if(boundSpriteKey!==key){
-    gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,sprite.textures[pose]);
+    gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,sprite.textures[selected.key]);
     gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,sprite.mask);
     gl.activeTexture(gl.TEXTURE0);boundSpriteKey=key;
    }
@@ -359,7 +379,7 @@ function frame(now){
   else{
    const index=plan.timeline.findIndex(c=>state.elapsed>=c.start&&state.elapsed<c.end);
    const cue=plan.timeline[index];
-   if(cue){pose=cue.shape;highlight(cue.word);if(index!==lastCue){$('status').textContent='Mouthing · '+labels[cue.shape];lastCue=index;}}
+   if(cue){pose=cue.shape;highlight(cue.word);if(index!==lastCue){state.poseRevision++;$('status').textContent='Mouthing · '+labels[cue.shape];lastCue=index;}}
    setProgress(100*state.elapsed/plan.duration);
   }
  }
@@ -370,8 +390,15 @@ function frame(now){
  draw();requestAnimationFrame(frame);
 }
 function setProgress(value){$('progress').style.width=value+'%';document.querySelector('.track').setAttribute('aria-valuenow',Math.round(value));}
-function highlight(index){if(index===lastWord)return;lastWord=index;[...$('readout').children].forEach((span,i)=>span.classList.toggle('current',i===index));}
-function resetPlayback(){state.playing=false;state.hold='X';state.pose='X';state.elapsed=0;lastCue=-1;highlight(-1);setProgress(0);$('stop').disabled=true;$('play').textContent='Play sentence';document.querySelectorAll('[data-shape]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.shape==='X')));}
+function highlight(index){
+ if(index===lastWord)return;
+ lastWord=index;
+ [...$('readout').children].forEach((span,i)=>span.classList.toggle('current',i===index));
+ // Use the same word event as the mouth cues; silence, stop and completion clear it.
+ const text=index>=0?state.plan?.words[index]?.text??'':'';
+ $('word-subtitle').textContent=text.trim().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,'');
+}
+function resetPlayback(){state.poseRevision++;state.playing=false;state.hold='X';state.pose='X';state.elapsed=0;lastCue=-1;highlight(-1);setProgress(0);$('stop').disabled=true;$('play').textContent='Play sentence';document.querySelectorAll('[data-shape]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.shape==='X')));}
 function stop(){state.request++;resetPlayback();$('play').disabled=!state.ready;$('status').textContent='Ready · 等待输入';}
 async function play(){
  const pace=sliderValue('speed');
