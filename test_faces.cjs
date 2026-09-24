@@ -16,6 +16,11 @@ run(fs.readFileSync(__dirname+'/app.js','utf8'));
 const faces=run('faces');assert.equal(faces.length,21);
 run("uniforms=Object.fromEntries(['spriteVisible','mouth','amount','crop','activeFace','showGuides','geometry','dynamics','axis','faceBounds','softness','guideRadius','guidePoints[0]'].map(x=>[x,x]));Object.assign(centralTextures,Object.fromEntries(Object.keys(centralPoseFiles).map(k=>[k,k])));state.guides=true;draw();");
 assert.equal(calls.length,22);assert.equal(calls[0].activeFace,0);
+// The image pass must include the forehead and ears, not retain mouth-only clipping.
+const [cx,cy,cw,ch]=calls[1].scissor;
+assert.ok(cx<=1824&&cx+cw>=2848);
+assert.ok(2592-cy-ch<=752&&2592-cy>=1776);
+
 let area=0;
 for(const [i,call] of calls.slice(1).entries()){
  assert.equal(call.activeFace,i===0?2:1);const [x,y,w,h]=call.scissor;

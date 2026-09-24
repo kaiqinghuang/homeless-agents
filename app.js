@@ -34,7 +34,9 @@ function makeFace(id,x,y,halfWidth,angle=0,curve=halfWidth*.12){
 }
 const centralFace=Object.assign(makeFace('central',602.08,390.85,25.74),{
  falloffX:44.27,falloffY:32.95,curve:3.19,opening:15.44,decay:15.44,
- bounds:[510-602.08,300-390.85,704-602.08,449-390.85],
+ // The central image pass covers the full 1024px face crop, including forehead.
+ bounds:[1824*1184/4608-602.08,752*666/2592-390.85,
+         (1824+1024)*1184/4608-602.08,(752+1024)*666/2592-390.85],
  cheeks:[[547.50,340.41],[562.95,365.12],[543.39,376.45],[552.66,397.04],
          [648.40,340.40],[637.08,365.11],[656.64,375.40],[646.35,397.02]].map(([x,y])=>[x-602.08,y-390.85])
 });
@@ -77,6 +79,36 @@ function faceScissor(g,crop,width,height){
 // Discrete artwork poses; the shared phoneme planner keeps its A–H codes.
 const centralPoseFiles={X:'00-rest',A:'01-pressed',B:'02-wide',C:'03-parted',D:'04-open',E:'05-oh',F:'06-oo',G:'07-fold',H:'08-skew'};
 const centralSpriteRect=[1824/4608,752/2592,1024/4608,1024/2592];
+// Inset silhouette traced on the original 1024px crop. It excludes the
+// surrounding soil and cast shadow; each pose shares this fixed boundary.
+const centralHeadOutline=[
+ [517,62],[573,69],[628,88],[681,119],[729,161],[766,215],
+ [792,274],[804,334],[805,396],[798,453],[794,499],
+ [818,507],[844,498],[862,511],[874,538],[874,577],[865,615],
+ [847,650],[824,673],[801,679],[787,665],
+ [775,711],[755,759],[724,807],[683,852],[636,887],
+ [582,916],[525,932],[468,922],[409,901],[355,871],
+ [309,831],[274,782],[247,727],[230,672],
+ [209,678],[184,663],[165,633],[151,596],[146,556],
+ [153,522],[169,507],[187,512],[201,539],[212,558],
+ [205,498],[198,440],[197,380],[203,318],[215,258],
+ [237,202],[271,155],[317,117],[368,89],[421,73],[469,63]
+];
+function makeCentralHeadMask(){
+ const mask=document.createElement('canvas');mask.width=mask.height=1024;
+ const ctx=mask.getContext('2d');
+ ctx.fillStyle='#000';ctx.fillRect(0,0,1024,1024);
+ ctx.beginPath();centralHeadOutline.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();
+ ctx.save();ctx.clip();ctx.fillStyle='#fff';ctx.fill();
+ // Paint nested edge strokes, clipped to the silhouette. No blur can leak
+ // outward onto the ground; the 8px feather lies entirely inside the head.
+ ctx.lineJoin='round';
+ for(let distance=8;distance>=.5;distance-=.5){
+  const t=(distance-.5)/7.5,gray=Math.round(255*t*t*(3-2*t));
+  ctx.strokeStyle=`rgb(${gray},${gray},${gray})`;ctx.lineWidth=distance*2;ctx.stroke();
+ }
+ ctx.restore();return mask;
+}
 const centralTextures={};
 let boundCentralPose=null;
 function loadPoseImage(file){
@@ -117,7 +149,7 @@ let program, uniforms, lastFrame=performance.now(), lastWord=-2, lastCue=-1;
 const vertex = `attribute vec2 position; varying vec2 uv; void main(){uv=vec2((position.x+1.0)*0.5,(1.0-position.y)*0.5);gl_Position=vec4(position,0.0,1.0);}`;
 const fragment = `precision highp float;
 varying vec2 uv; uniform sampler2D photo; uniform vec2 resolution; uniform vec3 mouth; uniform float amount; uniform vec4 crop;
-uniform sampler2D posePhoto; uniform vec4 spriteRect; uniform float spriteVisible;
+uniform sampler2D posePhoto; uniform sampler2D headMask; uniform vec4 spriteRect; uniform float spriteVisible;
 uniform float activeFace; uniform vec4 geometry; uniform vec4 dynamics; uniform vec2 axis; uniform vec4 faceBounds; uniform float softness;
 uniform float showGuides; uniform float guideRadius; uniform vec2 guidePoints[${GUIDE_COUNT}];
 vec3 withGuides(vec3 col,vec2 p){
@@ -138,10 +170,8 @@ void main(){
  if(activeFace<.5){gl_FragColor=vec4(texture2D(photo,p/resolution).rgb,1.0);return;}
  if(activeFace>1.5){
   vec2 t=(p/resolution-spriteRect.xy)/spriteRect.zw;
-  // Spatial edge feather only: no temporal blending or intermediate frames.
-  vec2 a=smoothstep(vec2(.31,.64),vec2(.36,.69),t);
-  vec2 b=1.0-smoothstep(vec2(.68,.89),vec2(.73,.94),t);
-  float mask=a.x*a.y*b.x*b.y*spriteVisible;
+  // The whole face changes, but the fixed inset silhouette excludes all soil.
+  float mask=texture2D(headMask,t).r*spriteVisible;
   vec3 col=mix(texture2D(photo,p/resolution).rgb,texture2D(posePhoto,t).rgb,mask);
   gl_FragColor=vec4(withGuides(col,p),1.0);return;
  }
@@ -182,8 +212,9 @@ async function setup(image){
  const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
  const attr=gl.getAttribLocation(program,'position');gl.enableVertexAttribArray(attr);gl.vertexAttribPointer(attr,2,gl.FLOAT,false,0,0);
  gl.activeTexture(gl.TEXTURE0);uploadTexture(image);
- uniforms=Object.fromEntries(['photo','posePhoto','spriteRect','spriteVisible','resolution','mouth','amount','crop','showGuides','guideRadius','guidePoints[0]','activeFace','geometry','dynamics','axis','faceBounds','softness'].map(k=>[k,gl.getUniformLocation(program,k)]));
- gl.uniform1i(uniforms.photo,0);gl.uniform1i(uniforms.posePhoto,1);
+ uniforms=Object.fromEntries(['photo','posePhoto','headMask','spriteRect','spriteVisible','resolution','mouth','amount','crop','showGuides','guideRadius','guidePoints[0]','activeFace','geometry','dynamics','axis','faceBounds','softness'].map(k=>[k,gl.getUniformLocation(program,k)]));
+ gl.uniform1i(uniforms.photo,0);gl.uniform1i(uniforms.posePhoto,1);gl.uniform1i(uniforms.headMask,2);
+ gl.activeTexture(gl.TEXTURE2);uploadTexture(makeCentralHeadMask());gl.activeTexture(gl.TEXTURE0);
  gl.uniform4fv(uniforms.spriteRect,centralSpriteRect);
  $('status').textContent='Loading mouth images… / 正在加载嘴形图片';
  const images=await Promise.all(Object.entries(centralPoseFiles).map(async([key,file])=>[key,await loadPoseImage(file)]));
