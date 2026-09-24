@@ -57,3 +57,6 @@ ggml-*.bin
 # Local image study folders (large PNG/PSD drafts)
 0.1/
 0.2/
+0.3/
+0.4/
+assets/

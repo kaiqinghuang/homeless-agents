@@ -20,7 +20,7 @@ const canvas = $('portrait');
 const gl = canvas.getContext('webgl', {alpha:false, antialias:false, preserveDrawingBuffer:true});
 const shapes = {X:[0,1,0], A:[.02,.94,0], B:[.23,1.02,.5], C:[.55,1.02,.2], D:[1,.96,.1], E:[.42,.90,.05], F:[.30,.94,0], G:[.15,1,.7], H:[.4,.98,.25]};
 // Keep animation in the calibrated 1184×666 coordinate space while the
-// canvas and texture retain the full native image resolution (currently 4K).
+// canvas and texture retain the full native image resolution (currently 4608×2592).
 const calibrationSize = [1184, 666];
 // Each visible mouth has its own geometry in the same reference image space.
 // The cropped object at the very top has no visible face/mouth to animate.
@@ -49,7 +49,16 @@ const faces=[centralFace,
  makeFace('lower-right',787.90,533.42,14.0,.10,-.5),
  makeFace('tiny-right',867.34,556.54,6.0,-.04,.4),
  makeFace('upper-right',981.12,110.38,11.5,.055,1.6),
- makeFace('wrapped',1102.90,89.73,8.3,.10,.4)
+ makeFace('wrapped',1102.90,89.73,8.3,.10,.4),
+ makeFace('far-upper-left',152.88,111.51,9.51,-0.025,1.03),
+ makeFace('top-black',265.68,30.58,8.99,-0.170,0.00),
+ makeFace('far-left',109.97,242.81,7.45,0.020,2.31),
+ makeFace('wicker-left',102.01,460.44,6.17,0.060,0.51),
+ makeFace('wig-left',269.79,604.08,8.22,0.080,0.77),
+ makeFace('white-upper',667.03,90.19,8.48,-0.040,0.51),
+ makeFace('clay-lower',627.46,559.62,5.14,-0.100,0.51),
+ makeFace('ruffle-right',970.48,579.41,8.74,0.070,1.54),
+ makeFace('far-right',1136.21,458.13,5.91,0.040,0.77)
 ];
 const faceCrop = [.304, .29, .41, .41];
 const GUIDE_COUNT=21;
@@ -65,14 +74,60 @@ function faceScissor(g,crop,width,height){
  const y1=Math.min(height,Math.ceil(py(Math.max(...points.map(p=>p[1])))));
  return x1>x0&&y1>y0?[x0,height-y1,x1-x0,y1-y0]:null;
 }
-const labels = {X:'Rest',A:'M / B / P',B:'EE',C:'EH',D:'AH',E:'OH',F:'OO',G:'F / V',H:'L'};
-let state = {ready:false, playing:false, plan:null, start:0, elapsed:0, hold:'X', current:[0,1,0], zoom:false, guides:false, request:0};
+// Discrete artwork poses; the shared phoneme planner keeps its A–H codes.
+const centralPoseFiles={X:'00-rest',A:'01-pressed',B:'02-wide',C:'03-parted',D:'04-open',E:'05-oh',F:'06-oo',G:'07-fold',H:'08-skew'};
+const centralSpriteRect=[1824/4608,752/2592,1024/4608,1024/2592];
+const centralTextures={};
+let boundCentralPose=null;
+function loadPoseImage(file){
+ return new Promise((resolve,reject)=>{
+  const image=new Image();image.onload=()=>resolve(image);
+  image.onerror=()=>reject(new Error('Mouth images could not load. Restart Start.command, then refresh. / 请重启 Start.command 后刷新，加载嘴形图片。'));
+  image.src='assets/central-visemes-v1/'+file+'.png?v=1';
+ });
+}
+function uploadTexture(image){
+ const texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,texture);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+ gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,image);return texture;
+}
+// Approximate lip anchors measured in each still's 1024px crop. They switch
+// with the selected image, rather than following the old geometric warp.
+const centralLipAnchors={
+ X:[420,779,620,783,520,768,520,771],A:[403,780,624,784,516,762,516,764],
+ B:[399,770,620,782,510,757,510,767],C:[393,779,619,790,510,763,510,784],
+ D:[423,781,608,784,505,758,505,787],E:[432,780,611,785,506,760,506,788],
+ F:[451,780,595,783,501,754,501,785],G:[403,780,625,783,510,761,510,765],
+ H:[394,780,618,791,559,754,559,787]
+};
+function centralGuides(pose){
+ const [lx,ly,rx,ry,tx,ty,bx,by]=centralLipAnchors[pose];
+ const lip=[[.5*(lx+rx),.5*(ty+by)],[lx,ly],[rx,ry],
+  [.4*lx+.6*tx,.4*ly+.6*ty],[tx,ty],[.4*rx+.6*tx,.4*ry+.6*ty],
+  [.4*lx+.6*bx,.4*ly+.6*by],[bx,by],[.4*rx+.6*bx,.4*ry+.6*by]]
+  .map(([x,y])=>[(1824+x)*1184/4608,(752+y)*666/2592]);
+ const g=centralFace;
+ const skin=[[-g.falloffX,0],[g.falloffX,0],[0,-g.falloffY],[0,g.falloffY],...g.cheeks].map(([x,y])=>faceToImage(g,x,y));
+ guidePoints.set([...lip,...skin].flat());return guidePoints;
+}
+const labels = {X:'Rest',A:'M / B / P',B:'EE',C:'EH',D:'AH',E:'OH',F:'OO',G:'Lip fold · F / V',H:'Skew · L'};
+let state = {ready:false, playing:false, plan:null, start:0, elapsed:0, hold:'X', pose:'X', current:[0,1,0], zoom:false, guides:false, request:0};
 let program, uniforms, lastFrame=performance.now(), lastWord=-2, lastCue=-1;
 const vertex = `attribute vec2 position; varying vec2 uv; void main(){uv=vec2((position.x+1.0)*0.5,(1.0-position.y)*0.5);gl_Position=vec4(position,0.0,1.0);}`;
 const fragment = `precision highp float;
 varying vec2 uv; uniform sampler2D photo; uniform vec2 resolution; uniform vec3 mouth; uniform float amount; uniform vec4 crop;
+uniform sampler2D posePhoto; uniform vec4 spriteRect; uniform float spriteVisible;
 uniform float activeFace; uniform vec4 geometry; uniform vec4 dynamics; uniform vec2 axis; uniform vec4 faceBounds; uniform float softness;
 uniform float showGuides; uniform float guideRadius; uniform vec2 guidePoints[${GUIDE_COUNT}];
+vec3 withGuides(vec3 col,vec2 p){
+ if(showGuides>.5){
+  float nearest=10000.0;
+  for(int i=0;i<${GUIDE_COUNT};i++){nearest=min(nearest,length(p-guidePoints[i]));}
+  col=mix(col,vec3(0.0),1.0-smoothstep(guideRadius*.78,guideRadius,nearest));
+ }
+ return col;
+}
 float maskAt(vec2 q){
  vec2 a=smoothstep(faceBounds.xy,faceBounds.xy+geometry.z*.4,q);
  vec2 b=1.0-smoothstep(faceBounds.zw-geometry.z*.4,faceBounds.zw,q);
@@ -81,6 +136,15 @@ float maskAt(vec2 q){
 void main(){
  vec2 p=(crop.xy+uv*crop.zw)*resolution;
  if(activeFace<.5){gl_FragColor=vec4(texture2D(photo,p/resolution).rgb,1.0);return;}
+ if(activeFace>1.5){
+  vec2 t=(p/resolution-spriteRect.xy)/spriteRect.zw;
+  // Spatial edge feather only: no temporal blending or intermediate frames.
+  vec2 a=smoothstep(vec2(.31,.64),vec2(.36,.69),t);
+  vec2 b=1.0-smoothstep(vec2(.68,.89),vec2(.73,.94),t);
+  float mask=a.x*a.y*b.x*b.y*spriteVisible;
+  vec3 col=mix(texture2D(photo,p/resolution).rgb,texture2D(posePhoto,t).rgb,mask);
+  gl_FragColor=vec4(withGuides(col,p),1.0);return;
+ }
  vec2 delta=p-geometry.xy;
  vec2 q=vec2(dot(delta,axis),dot(delta,vec2(-axis.y,axis.x)));
  // Scissored passes share a texture, with no warp outside this face's bounds.
@@ -104,21 +168,11 @@ void main(){
  cavity*=smoothstep(0.0,.10,edge)*smoothstep(.0,1.4*softness,opening);
  float relative=clamp((q.y-top)/max(softness,bottom-top),0.0,1.0);
  vec3 inside=mix(vec3(.063,.060,.063),vec3(.13,.115,.12),relative);
- float teeth=(1.0-smoothstep(.18,.30,relative))*mouth.z*edge;
- inside=mix(inside,vec3(.39,.37,.33),teeth*.65);
- float tongue=smoothstep(.62,.9,relative)*max(0.0,1.0-nx*nx)*.35;
- inside=mix(inside,vec3(.24,.17,.17),tongue);
  col=mix(col,inside,cavity);
- if(showGuides>.5){
-  float nearest=10000.0;
-  for(int i=0;i<${GUIDE_COUNT};i++){nearest=min(nearest,length(p-guidePoints[i]));}
-  float dotMask=1.0-smoothstep(guideRadius*.78,guideRadius,nearest);
-  col=mix(col,vec3(0.0),dotMask);
- }
- gl_FragColor=vec4(col,1.0);
+ gl_FragColor=vec4(withGuides(col,p),1.0);
 }`;
 function compile(type, source){const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(shader));return shader;}
-function setup(image){
+async function setup(image){
  if(!gl)throw new Error('This browser cannot render WebGL. Please use Safari or Chrome.');
  canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
  $('stage').style.aspectRatio=canvas.width+'/'+canvas.height;
@@ -127,8 +181,15 @@ function setup(image){
  gl.useProgram(program);
  const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
  const attr=gl.getAttribLocation(program,'position');gl.enableVertexAttribArray(attr);gl.vertexAttribPointer(attr,2,gl.FLOAT,false,0,0);
- const texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,texture);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,image);
- uniforms=Object.fromEntries(['resolution','mouth','amount','crop','showGuides','guideRadius','guidePoints[0]','activeFace','geometry','dynamics','axis','faceBounds','softness'].map(k=>[k,gl.getUniformLocation(program,k)]));
+ gl.activeTexture(gl.TEXTURE0);uploadTexture(image);
+ uniforms=Object.fromEntries(['photo','posePhoto','spriteRect','spriteVisible','resolution','mouth','amount','crop','showGuides','guideRadius','guidePoints[0]','activeFace','geometry','dynamics','axis','faceBounds','softness'].map(k=>[k,gl.getUniformLocation(program,k)]));
+ gl.uniform1i(uniforms.photo,0);gl.uniform1i(uniforms.posePhoto,1);
+ gl.uniform4fv(uniforms.spriteRect,centralSpriteRect);
+ $('status').textContent='Loading mouth images… / 正在加载嘴形图片';
+ const images=await Promise.all(Object.entries(centralPoseFiles).map(async([key,file])=>[key,await loadPoseImage(file)]));
+ gl.activeTexture(gl.TEXTURE1);
+ for(const [key,image] of images)centralTextures[key]=uploadTexture(image);
+ gl.activeTexture(gl.TEXTURE0);
  gl.uniform2f(uniforms.resolution,...calibrationSize);gl.viewport(0,0,canvas.width,canvas.height);
  state.ready=true;$('play').disabled=false;$('status').textContent='Ready · 等待输入';
  document.querySelectorAll('[data-shape]').forEach(button=>button.disabled=false);
@@ -175,12 +236,19 @@ function draw(){
  for(const g of faces){
   const rect=faceScissor(g,crop,canvas.width,canvas.height);if(!rect)continue;
   gl.scissor(...rect);
+  const isCentral=g===centralFace;
+  gl.uniform1f(uniforms.activeFace,isCentral?2:1);
+  const pose=state.pose;
+  if(isCentral){
+   if(boundCentralPose!==pose){gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,centralTextures[pose]);gl.activeTexture(gl.TEXTURE0);boundCentralPose=pose;}
+   gl.uniform1f(uniforms.spriteVisible,pose==='X'?0:1);
+  }
   gl.uniform4fv(uniforms.geometry,[g.x,g.y,g.halfWidth,g.falloffX]);
   gl.uniform4fv(uniforms.dynamics,[g.falloffY,g.curve,g.opening,g.decay]);
   gl.uniform2f(uniforms.axis,Math.cos(g.angle),Math.sin(g.angle));
   gl.uniform4fv(uniforms.faceBounds,g.bounds);gl.uniform1f(uniforms.softness,g.softness);
   if(state.guides){
-   gl.uniform2fv(uniforms['guidePoints[0]'],updateGuides(g));
+   gl.uniform2fv(uniforms['guidePoints[0]'],isCentral?centralGuides(pose):updateGuides(g));
    gl.uniform1f(uniforms.guideRadius,crop[2]*calibrationSize[0]/displayedWidth*2.6*.75*Math.max(.3,Math.min(1,g.softness)));
   }
   gl.drawArrays(gl.TRIANGLES,0,6);
@@ -189,25 +257,27 @@ function draw(){
 }
 function frame(now){
  const dt=Math.min(.05,(now-lastFrame)/1000);lastFrame=now;
- let target=shapes[state.hold];
+ let pose=state.hold;
  if(state.playing){
   state.elapsed=(now-state.start)/1000;
   const plan=state.plan;
-  if(state.elapsed>=plan.duration){state.playing=false;state.hold='X';target=shapes.X;$('stop').disabled=true;$('play').textContent='Play again';$('status').textContent='Finished · 播放结束';setProgress(100);highlight(-1);}
+  if(state.elapsed>=plan.duration){state.playing=false;state.hold='X';pose='X';$('stop').disabled=true;$('play').textContent='Play again';$('status').textContent='Finished · 播放结束';setProgress(100);highlight(-1);}
   else{
    const index=plan.timeline.findIndex(c=>state.elapsed>=c.start&&state.elapsed<c.end);
    const cue=plan.timeline[index];
-   if(cue){target=shapes[cue.shape];highlight(cue.word);if(index!==lastCue){$('status').textContent='Mouthing · '+labels[cue.shape];lastCue=index;}}
+   if(cue){pose=cue.shape;highlight(cue.word);if(index!==lastCue){$('status').textContent='Mouthing · '+labels[cue.shape];lastCue=index;}}
    setProgress(100*state.elapsed/plan.duration);
   }
  }
+ state.pose=pose;
+ const target=shapes[pose];
  const blend=1-Math.exp(-dt*23);
  state.current=state.current.map((value,i)=>value+(target[i]-value)*blend);
  draw();requestAnimationFrame(frame);
 }
 function setProgress(value){$('progress').style.width=value+'%';document.querySelector('.track').setAttribute('aria-valuenow',Math.round(value));}
 function highlight(index){if(index===lastWord)return;lastWord=index;[...$('readout').children].forEach((span,i)=>span.classList.toggle('current',i===index));}
-function resetPlayback(){state.playing=false;state.hold='X';state.elapsed=0;lastCue=-1;highlight(-1);setProgress(0);$('stop').disabled=true;$('play').textContent='Play sentence';document.querySelectorAll('[data-shape]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.shape==='X')));}
+function resetPlayback(){state.playing=false;state.hold='X';state.pose='X';state.elapsed=0;lastCue=-1;highlight(-1);setProgress(0);$('stop').disabled=true;$('play').textContent='Play sentence';document.querySelectorAll('[data-shape]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.shape==='X')));}
 function stop(){state.request++;resetPlayback();$('play').disabled=!state.ready;$('status').textContent='Ready · 等待输入';}
 async function play(){
  const pace=sliderValue('speed');
@@ -238,7 +308,7 @@ $('guides').addEventListener('click',()=>{state.guides=!state.guides;$('guides')
 $('fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('stage').requestFullscreen();}catch(error){$('error').textContent='Full screen is unavailable here. Open this page in Safari or Chrome.';}});
 $('text').addEventListener('keydown',event=>{if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();if(state.ready)play();}});
 canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();state.ready=false;stop();$('error').textContent='Graphics context lost. Reload the page to restore the portrait.';});
-const portrait=new Image();portrait.onload=()=>{try{setup(portrait);}catch(error){$('error').textContent=error.message;$('status').textContent='Could not render portrait';}};portrait.onerror=()=>{$('error').textContent='Portrait image could not be loaded.';};portrait.src='assets/portrait.png?v=central-face-4k-2';
+const portrait=new Image();portrait.onload=async()=>{try{await setup(portrait);}catch(error){$('error').textContent=error.message;$('status').textContent='Could not render portrait';}};portrait.onerror=()=>{$('error').textContent='Portrait image could not be loaded.';};portrait.src='assets/portrait.png?v=composition-20260922-1';
 
 // Both generated replies and the optional transcript echo use the same player.
 let automaticRequest=null;

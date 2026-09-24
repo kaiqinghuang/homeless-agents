@@ -40,16 +40,18 @@ run('draw=()=>{};state.ready=true;');
   for(const [index,cue] of scaled.timeline.entries()){
    run(`frame(${1000+(cue.start+cue.end)*500})`);
    assert.equal(get('readout').children.findIndex(e=>e.classList.current),cue.word);
-   assert.equal(run('lastCue'),index);checked++;
+   assert.equal(run('lastCue'),index);
+   assert.equal(run('state.pose'),cue.shape,'image pose must switch directly to the active cue');checked++;
   }
   run(`frame(${1000+scaled.duration*1000+10})`);
   assert.equal(run('state.playing'),false);
+  assert.equal(run('state.pose'),'X');
   assert.equal(get('readout').children.some(e=>e.classList.current),false);
  }
  currentPlan=plans[0];await run('window.afterimageMotion.echo("Make a face.")');
  assert.equal(sent.at(-1).text,'Make a face.');
  assert.equal(await run('window.afterimageMotion.echo("later transcript")'),false);
- assert.equal(get('text').value,'Make a face.');run('stop()');
+ assert.equal(get('text').value,'Make a face.');run('stop()');assert.equal(run('state.pose'),'X');
  let release;pending=new Promise(resolve=>{release=resolve;});
  const loading=run('play()');run('stop()');
  release({ok:true,json:async()=>plans[0]});await loading;

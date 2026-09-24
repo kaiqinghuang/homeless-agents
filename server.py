@@ -13,6 +13,10 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+STATIC_PATHS = {'/', '/index.html', '/app.js', '/agent.js', '/listening.js', '/audio-capture.js', '/listening.css', '/assets/portrait.png'}
+STATIC_PATHS.update('/assets/central-visemes-v1/' + name + '.png' for name in (
+    '00-rest', '01-pressed', '02-wide', '03-parted', '04-open', '05-oh', '06-oo', '07-fold', '08-skew'))
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
@@ -44,13 +48,13 @@ class Handler(SimpleHTTPRequestHandler):
             self.respond({'events': self.server.archive.recent()})
         elif path == '/api/decisions':
             self.respond({'decisions': self.server.archive.decisions()})
-        elif path in ('/', '/index.html', '/app.js', '/agent.js', '/listening.js', '/audio-capture.js', '/listening.css', '/assets/portrait.png'):
+        elif path in STATIC_PATHS:
             super().do_GET()
         else:
             self.send_error(404)
 
     def do_HEAD(self):
-        if urlsplit(self.path).path in ('/', '/index.html', '/app.js', '/agent.js', '/listening.js', '/audio-capture.js', '/listening.css', '/assets/portrait.png'):
+        if urlsplit(self.path).path in STATIC_PATHS:
             super().do_HEAD()
         else:
             self.send_error(404)
