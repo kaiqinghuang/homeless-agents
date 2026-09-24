@@ -11,7 +11,7 @@
    Reference: 420 x 118 box, center x=2304, bottom inset=194; ~75px Myriad Pro.
    Equal horizontal padding follows the current word; all units scale with the photo. */
 .stage{container-type:inline-size}
-.word-subtitle{--caption-unit:calc(100cqw / 4608);position:absolute;left:50%;bottom:calc(194 * var(--caption-unit));transform:translateX(-50%);z-index:1;display:flex;align-items:center;justify-content:center;width:max-content;max-width:90%;height:calc(118 * var(--caption-unit));padding:0 calc(57.5 * var(--caption-unit));background:rgba(0,0,0,.5);color:#e6e6e6;text-align:center;font-family:"Artwork Myriad Pro","Myriad Pro","PingFang SC",sans-serif;font-size:calc(75 * var(--caption-unit));font-style:normal;font-weight:400;line-height:1;letter-spacing:normal;pointer-events:none;white-space:nowrap;text-shadow:none;border-radius:0}
+.word-subtitle{--caption-unit:calc(100cqw / 4608);position:absolute;left:50%;bottom:calc(194 * var(--caption-unit));transform:translateX(-50%);z-index:1;display:flex;align-items:center;justify-content:center;width:max-content;max-width:90%;height:calc(118 * var(--caption-unit));padding:0 calc(57.5 * var(--caption-unit));background:rgba(0,0,0,.48);color:#e6e6e6;text-align:center;font-family:"Artwork Myriad Pro","Myriad Pro","PingFang SC",sans-serif;font-size:calc(75 * var(--caption-unit));font-style:normal;font-weight:400;line-height:1;letter-spacing:normal;pointer-events:none;white-space:nowrap;text-shadow:none;border-radius:0}
 .word-subtitle:empty{display:none}
 .stage:fullscreen .word-subtitle{--caption-unit:calc(min(100vw,177.777778vh) / 4608);bottom:calc(max(0px,(100vh - 56.25vw)/2) + 194 * var(--caption-unit))}
 </style>
@@ -61,12 +61,12 @@
 <div class="error" id="error" role="alert"></div>
 <div class="setting"><label for="speed">Pace <span class="cn">语速</span><output id="speed-value">0.60×</output></label><input type="range" id="speed" min="0" max="100" step="1" value="50" aria-valuetext="0.60×"></div>
 <div class="setting"><label for="amount">Other faces <span class="cn">其他脸幅度</span><output id="amount-value">0.30×</output></label><input type="range" id="amount" min="0" max="100" step="1" value="50" aria-valuetext="0.30×"></div>
-<details><summary>Inspect individual mouth shapes / 检查嘴形</summary><div class="shapes" id="shapes"></div><p class="note">Six faces use their own image poses. / 六张脸分别使用独立姿态图库。</p></details>
+<details><summary>Inspect individual mouth shapes / 检查嘴形</summary><div class="shapes" id="shapes"></div><p class="note">Seven faces use their own image poses. / 七张脸分别使用独立姿态图库。</p></details>
 <details hidden><summary>Inspect pronunciation / 检查发音</summary><div class="note" id="pronunciation">Play a sentence to see its phonemes.<br>播放后可查看各词的发音音素。</div><p class="note">Local pronunciation → timed mouth shapes. No sound is played.<br>本地发音驱动口型，保持无声；嘴形仍为简化表现。</p></details>
 </aside>
 </main>
 <footer><span>Afterimage · Local listening</span><span>Silent · Offline</span></footer>
-<script src="app.js?v=sixth-face-1"></script>
+<script src="app.js?v=seventh-face-70-30"></script>
 <script src="agent.js"></script>
 <script src="listening.js"></script>
 </body></html>

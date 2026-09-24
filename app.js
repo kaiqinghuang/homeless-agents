@@ -62,6 +62,12 @@ const faces=[centralFace,
  makeFace('ruffle-right',970.48,579.41,8.74,0.070,1.54),
  makeFace('far-right',1136.21,458.13,5.91,0.040,0.77)
 ];
+// Frame the entire composite together: remove 10px left / 4px right at the
+// 1184px reference width, then enlarge uniformly to fill. Center the vertical crop.
+// Background, sprite UVs, procedural faces, guides and scissors share this crop.
+const artworkFrame = {left:10, right:4};
+const artworkScale = (calibrationSize[0]-artworkFrame.left-artworkFrame.right)/calibrationSize[0];
+const artworkCrop = [artworkFrame.left/calibrationSize[0], (1-artworkScale)/2, artworkScale, artworkScale];
 const faceCrop = [.304, .29, .41, .41];
 const GUIDE_COUNT=21;
 const guidePoints=new Float32Array(GUIDE_COUNT*2);
@@ -184,7 +190,12 @@ const redEyesFirstVariants={"A":[{"key":"first:01-pressed","file":"01-pressed","
 // Sixth face: quiet clay, tiny uneven lip seams; native crop authored at 8/3 scale.
 const clayLowerHeadOutline=[[348,430],[388,431],[432,422],[473,436],[512,433],[548,426],[588,424],[626,409],[663,397],[698,426],[714,458],[714,505],[708,549],[700,596],[685,644],[663,689],[638,734],[612,766],[579,785],[543,797],[506,790],[470,772],[442,745],[416,712],[394,674],[375,632],[359,585],[348,541],[343,496]];
 const clayLowerLipAnchors={"X":[472,691,599,685,533,684,533,688],"A":[474,689,598,684,533,685,533,687],"B":[463,689,600,685,533,682,533,686],"C":[475,689,595,687,510,682,510,691],"D":[475,691,592,688,535,686,535,698],"E":[483,689,588,688,538,684,538,695],"F":[483,690,591,687,540,689,540,703],"G":[475,690,595,684,530,685,530,688],"H":[475,690,595,686,533,690,533,699]};
+// Seventh face: tiny triangular mouth; articulation lives in surrounding muscle planes.
+const leftProfileHeadOutline=[[279,380],[310,369],[351,366],[387,367],[419,378],[448,396],[478,420],[498,446],[525,466],[545,489],[552,521],[551,555],[548,587],[553,617],[551,649],[548,678],[539,700],[543,719],[542,741],[530,753],[510,754],[490,743],[475,737],[468,751],[448,766],[424,775],[395,770],[374,758],[355,741],[341,715],[328,685],[318,650],[305,613],[292,571],[279,526],[267,480],[256,435],[259,405]];
+const leftProfileLipAnchors={"X":[479,598,505,601,490,589,490,601],"A":[477,599,505,604,487,589,490,601],"B":[482,598,503,601,491,590,491,599],"C":[479,601,501,603,490,588,490,601],"D":[475,595,495,596,483,585,484,595],"E":[480,600,502,603,490,588,490,601],"F":[476,595,495,596,486,585,486,595],"G":[478,601,500,602,489,584,489,601],"H":[485,601,505,603,494,588,495,601]};
+const leftProfileSecondVariants={"A":[{"key":"second:01-pressed","file":"01-pressed","folder":"left-profile-visemes-v2","anchors":[458,613,513,614,488,585,489,615]}],"B":[{"key":"second:02-wide","file":"02-wide","folder":"left-profile-visemes-v2","anchors":[451,604,508,606,483,591,483,605]}],"C":[{"key":"second:03-parted","file":"03-parted","folder":"left-profile-visemes-v2","anchors":[456,608,514,613,490,583,490,613]}],"D":[{"key":"second:04-open","file":"04-open","folder":"left-profile-visemes-v2","anchors":[451,610,519,607,488,584,489,617]}],"E":[{"key":"second:05-oh","file":"05-oh","folder":"left-profile-visemes-v2","anchors":[451,610,507,613,489,581,484,612]}],"F":[{"key":"second:06-oo","file":"06-oo","folder":"left-profile-visemes-v2","anchors":[472,596,516,612,493,576,493,606]}],"G":[{"key":"second:07-fold","file":"07-fold","folder":"left-profile-visemes-v2","anchors":[453,610,517,614,490,584,484,612]}],"H":[{"key":"second:08-skew","file":"08-skew","folder":"left-profile-visemes-v2","anchors":[467,597,512,611,493,580,490,610]}]};
 const spriteFaces={
+ 'left-profile':{face:faces.find(g=>g.id==='left-profile'),folder:'left-profile-visemes-v1',variants:leftProfileSecondVariants,baseProbability:{A:.7,B:.7,C:.7,D:.7,E:.7,F:.7,G:.7,H:.7},origin:[640,640],rect:[640/4608,640/2592,1024/4608,1024/2592],outline:leftProfileHeadOutline,lipAnchors:leftProfileLipAnchors,textures:{},mask:null},
  'clay-lower':{face:faces.find(g=>g.id==='clay-lower'),folder:'clay-lower-visemes-v1',origin:[2240,1920],sourceScale:.375,rect:[2240/4608,1920/2592,384/4608,384/2592],outline:clayLowerHeadOutline,lipAnchors:clayLowerLipAnchors,textures:{},mask:null},
  central:{face:centralFace,folder:'central-visemes-v1',origin:[1824,752],rect:centralSpriteRect,outline:centralHeadOutline,lipAnchors:centralLipAnchors,textures:centralTextures,mask:null},
  'red-eyes':{face:faces.find(g=>g.id==='red-eyes'),folder:'red-eyes-visemes-v1',version:6,variants:redEyesFirstVariants,origin:[2688,256],rect:[2688/4608,256/2592,1024/4608,1024/2592],outline:redEyesHeadOutline,lipAnchors:redEyesLipAnchors,textures:{},mask:null},
@@ -343,7 +354,7 @@ function updateGuides(g){
 }
 function draw(){
  gl.uniform3fv(uniforms.mouth,state.current);gl.uniform1f(uniforms.amount,sliderValue('amount'));
- const crop=state.zoom?faceCrop:[0,0,1,1];gl.uniform4fv(uniforms.crop,crop);
+ const crop=state.zoom?faceCrop:artworkCrop;gl.uniform4fv(uniforms.crop,crop);
  // One full-resolution background, then small scissored regions for each face.
  // We reuse 21 guide uniforms instead of requiring a large array for all faces.
  gl.disable(gl.SCISSOR_TEST);gl.uniform1f(uniforms.activeFace,0);gl.drawArrays(gl.TRIANGLES,0,6);

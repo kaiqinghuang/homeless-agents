@@ -45,3 +45,11 @@ Latest fifth-face selection: user enabled all 13 generated images, including the
 ## Sixth face — 2026-09-24
 
 Small brown clay head immediately right of face five (`clay-lower`). More restrained and subtle than prior faces, but still asymmetric and uncanny. Character: quiet uneven lip-plane pressure, interrupted hairline seams, shallow central dimples and tiny notched openings. Preserve blank closed eyes without adding pupils; no teeth or tongue. Eight distinct stills plus original rest, fixed exterior/hair/neck/ground. Library: `assets/clay-lower-visemes-v1`.
+
+## Seventh face — 2026-09-24
+
+Larger black/silver face inside the pale hood immediately left of face four (`left-profile`). Special rule: mouth remains a tiny dark triangular notch with small changes of compression and taper; never broadly open it, even for AH/OH cues. Expression lives in asymmetric cheek/perioral/nasolabial/chin tension, with secondary linked brow and eyelid muscle response. Keep hood, neck, outer silhouette and ground fixed; no teeth or tongue. Eight distinct expression stills plus original rest in `assets/left-profile-visemes-v1`. Use the same whole-artwork framing as all other faces.
+
+## Seventh face: two active sets — 2026-09-24
+
+Keep the first eight images intact and add eight second-set images in `assets/left-profile-visemes-v2`. The second set has slightly larger, stranger small folded/wedge mouth contours with asymmetric muscle tension. Select set one with 70% probability and set two with 30% for each matching A–H cue; hold the selected still through that cue. No cross-pose selection; rest remains original. Both sets share the same fixed mask, calibration and whole-artwork crop.
