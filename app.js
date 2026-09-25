@@ -103,17 +103,17 @@ const centralHeadOutline=[
  [205,498],[198,440],[197,380],[203,318],[215,258],
  [237,202],[271,155],[317,117],[368,89],[421,73],[469,63]
 ];
-function makeHeadMask(outline){
+function makeHeadMask(outline,feather=8){
  const mask=document.createElement('canvas');mask.width=mask.height=1024;
  const ctx=mask.getContext('2d');
  ctx.fillStyle='#000';ctx.fillRect(0,0,1024,1024);
  ctx.beginPath();outline.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();
  ctx.save();ctx.clip();ctx.fillStyle='#fff';ctx.fill();
  // Paint nested edge strokes, clipped to the silhouette. No blur can leak
- // outward onto the ground; the 8px feather lies entirely inside the head.
+ // outward onto the ground; feathering stays inside the fixed silhouette.
  ctx.lineJoin='round';
- for(let distance=8;distance>=.5;distance-=.5){
-  const t=(distance-.5)/7.5,gray=Math.round(255*t*t*(3-2*t));
+ for(let distance=feather;distance>=.5;distance-=.5){
+  const t=(distance-.5)/(feather-.5),gray=Math.round(255*t*t*(3-2*t));
   ctx.strokeStyle=`rgb(${gray},${gray},${gray})`;ctx.lineWidth=distance*2;ctx.stroke();
  }
  ctx.restore();return mask;
@@ -194,7 +194,19 @@ const clayLowerLipAnchors={"X":[472,691,599,685,533,684,533,688],"A":[474,689,59
 const leftProfileHeadOutline=[[279,380],[310,369],[351,366],[387,367],[419,378],[448,396],[478,420],[498,446],[525,466],[545,489],[552,521],[551,555],[548,587],[553,617],[551,649],[548,678],[539,700],[543,719],[542,741],[530,753],[510,754],[490,743],[475,737],[468,751],[448,766],[424,775],[395,770],[374,758],[355,741],[341,715],[328,685],[318,650],[305,613],[292,571],[279,526],[267,480],[256,435],[259,405]];
 const leftProfileLipAnchors={"X":[479,598,505,601,490,589,490,601],"A":[477,599,505,604,487,589,490,601],"B":[482,598,503,601,491,590,491,599],"C":[479,601,501,603,490,588,490,601],"D":[475,595,495,596,483,585,484,595],"E":[480,600,502,603,490,588,490,601],"F":[476,595,495,596,486,585,486,595],"G":[478,601,500,602,489,584,489,601],"H":[485,601,505,603,494,588,495,601]};
 const leftProfileSecondVariants={"A":[{"key":"second:01-pressed","file":"01-pressed","folder":"left-profile-visemes-v2","anchors":[458,613,513,614,488,585,489,615]}],"B":[{"key":"second:02-wide","file":"02-wide","folder":"left-profile-visemes-v2","anchors":[451,604,508,606,483,591,483,605]}],"C":[{"key":"second:03-parted","file":"03-parted","folder":"left-profile-visemes-v2","anchors":[456,608,514,613,490,583,490,613]}],"D":[{"key":"second:04-open","file":"04-open","folder":"left-profile-visemes-v2","anchors":[451,610,519,607,488,584,489,617]}],"E":[{"key":"second:05-oh","file":"05-oh","folder":"left-profile-visemes-v2","anchors":[451,610,507,613,489,581,484,612]}],"F":[{"key":"second:06-oo","file":"06-oo","folder":"left-profile-visemes-v2","anchors":[472,596,516,612,493,576,493,606]}],"G":[{"key":"second:07-fold","file":"07-fold","folder":"left-profile-visemes-v2","anchors":[453,610,517,614,490,584,484,612]}],"H":[{"key":"second:08-skew","file":"08-skew","folder":"left-profile-visemes-v2","anchors":[467,597,512,611,493,580,490,610]}]};
+// Eighth face: taut asymmetric lip/cheek tension inside a fixed brown hood.
+const upperLeftHeadOutline=[[475,171],[519,174],[562,193],[602,220],[634,252],[652,290],[659,334],[659,376],[650,419],[641,458],[627,499],[611,539],[591,577],[566,612],[536,637],[503,652],[469,647],[438,630],[412,604],[392,573],[375,536],[361,495],[350,451],[341,407],[336,362],[338,315],[349,270],[371,234],[405,205],[441,184]];
+const upperLeftLipAnchors={"X":[438,539,578,540,505,524,505,530],"A":[438,530,580,533,501,520,501,524],"B":[438,535,574,541,505,519,505,524],"C":[440,533,564,538,499,514,499,530],"D":[446,532,560,538,504,509,504,537],"E":[451,531,563,537,506,517,506,534],"F":[448,535,563,539,508,514,508,533],"G":[435,531,580,532,505,515,505,519],"H":[442,533,565,540,507,518,507,531]};
+const upperLeftSecondVariants={"A":[{"key":"second:01-pressed","file":"01-pressed","folder":"upper-left-visemes-v2","anchors":[437,540,570,550,505,526,505,530],"version":2}],"B":[{"key":"second:02-wide","file":"02-wide","folder":"upper-left-visemes-v2","anchors":[438,535,574,541,505,519,505,524],"version":2}],"C":[{"key":"second:03-parted","file":"03-parted","folder":"upper-left-visemes-v2","anchors":[438,535,574,540,505,523,505,529]}],"D":[{"key":"second:04-open","file":"04-open","folder":"upper-left-visemes-v2","anchors":[438,532,571,540,505,524,505,532]}],"E":[{"key":"second:05-oh","file":"05-oh","folder":"upper-left-visemes-v2","anchors":[447,531,565,536,507,520,507,531]}],"F":[{"key":"second:06-oo","file":"06-oo","folder":"upper-left-visemes-v2","anchors":[446,539,565,539,510,528,510,533]}],"G":[{"key":"second:07-fold","file":"07-fold","folder":"upper-left-visemes-v2","anchors":[438,539,573,540,503,526,503,529]}],"H":[{"key":"second:08-skew","file":"08-skew","folder":"upper-left-visemes-v2","anchors":[448,534,572,542,513,524,513,534]}]};
+const upperLeftThirdVariants={"A":[{"key":"third:01-pressed","file":"01-pressed","folder":"upper-left-visemes-v3","anchors":[437,540,570,550,505,526,505,530]}],"B":[{"key":"third:02-wide","file":"02-wide","folder":"upper-left-visemes-v3","anchors":[438,535,574,541,505,519,505,524]}],"C":[{"key":"third:03-parted","file":"03-parted","folder":"upper-left-visemes-v3","anchors":[439,542,573,546,499,513,499,521]}],"D":[{"key":"third:04-open","file":"04-open","folder":"upper-left-visemes-v3","anchors":[440,540,571,551,505,517,505,527]}],"E":[{"key":"third:05-oh","file":"05-oh","folder":"upper-left-visemes-v3","anchors":[448,539,574,545,505,521,505,529]}],"F":[{"key":"third:06-oo","file":"06-oo","folder":"upper-left-visemes-v3","anchors":[440,541,574,545,509,517,509,526]}],"G":[{"key":"third:07-fold","file":"07-fold","folder":"upper-left-visemes-v3","anchors":[438,535,579,550,496,515,496,522]}],"H":[{"key":"third:08-skew","file":"08-skew","folder":"upper-left-visemes-v3","anchors":[438,539,577,555,507,521,507,527]}]};
+const upperLeftVariants=Object.fromEntries(Object.keys(upperLeftSecondVariants).map(p=>[p,[...upperLeftSecondVariants[p],...upperLeftThirdVariants[p]]]));
+// Ninth face: switch the full facial surface, excluding hair, ornaments and neck.
+const rightLargeHeadOutline=[[414,270],[424,234],[452,214],[484,201],[521,178],[550,158],[571,163],[582,180],[588,216],[588,253],[603,285],[617,296],[631,288],[627,258],[626,221],[633,183],[640,166],[678,168],[714,187],[744,220],[767,250],[786,288],[800,330],[801,374],[796,417],[786,460],[773,493],[759,531],[737,570],[707,611],[674,644],[641,666],[607,683],[575,682],[547,689],[518,683],[488,668],[461,647],[443,624],[428,596],[415,563],[405,525],[398,481],[396,441],[397,405],[405,377],[415,361],[416,327],[411,300]];
+const rightLargeLipAnchors={"X":[480,535,625,567,550,534,550,539],"A":[480,530,620,556,550,526,550,531],"B":[480,534,620,561,550,530,550,535],"C":[480,532,621,560,550,529,550,536],"D":[480,533,624,561,550,527,550,536],"E":[480,533,620,560,550,530,550,536],"F":[492,536,619,563,554,531,554,539],"G":[480,534,620,560,550,530,550,534],"H":[480,533,621,560,550,530,550,534]};
+const rightLargeSecondVariants={"A":[{"key":"second:01-pressed","file":"01-pressed","folder":"right-large-visemes-v2","anchors":[480,530,621,556,550,526,550,530]}],"B":[{"key":"second:02-wide","file":"02-wide","folder":"right-large-visemes-v2","anchors":[480,535,620,560,550,532,550,534]}],"E":[{"key":"second:05-oh","file":"05-oh","folder":"right-large-visemes-v2","anchors":[484,535,622,563,552,530,552,538]}],"F":[{"key":"second:06-oo","file":"06-oo","folder":"right-large-visemes-v2","anchors":[493,535,620,562,554,530,554,538]}],"G":[{"key":"second:07-fold","file":"07-fold","folder":"right-large-visemes-v2","anchors":[481,535,620,560,550,531,550,533]}],"H":[{"key":"second:08-skew","file":"08-skew","folder":"right-large-visemes-v2","anchors":[481,534,623,560,550,529,550,535]}]};
 const spriteFaces={
+ 'right-large':{face:faces.find(g=>g.id==='right-large'),folder:'right-large-visemes-v1',variants:rightLargeSecondVariants,setWeights:[70,30],origin:[3424,800],rect:[3424/4608,800/2592,1024/4608,1024/2592],outline:rightLargeHeadOutline,maskFeather:24,lipAnchors:rightLargeLipAnchors,textures:{},mask:null},
+ 'upper-left':{face:faces.find(g=>g.id==='upper-left'),folder:'upper-left-visemes-v1',version:2,variants:upperLeftVariants,setWeights:[10,35,55],origin:[1056,64],rect:[1056/4608,64/2592,1024/4608,1024/2592],outline:upperLeftHeadOutline,lipAnchors:upperLeftLipAnchors,textures:{},mask:null},
  'left-profile':{face:faces.find(g=>g.id==='left-profile'),folder:'left-profile-visemes-v1',variants:leftProfileSecondVariants,baseProbability:{A:.7,B:.7,C:.7,D:.7,E:.7,F:.7,G:.7,H:.7},origin:[640,640],rect:[640/4608,640/2592,1024/4608,1024/2592],outline:leftProfileHeadOutline,lipAnchors:leftProfileLipAnchors,textures:{},mask:null},
  'clay-lower':{face:faces.find(g=>g.id==='clay-lower'),folder:'clay-lower-visemes-v1',origin:[2240,1920],sourceScale:.375,rect:[2240/4608,1920/2592,384/4608,384/2592],outline:clayLowerHeadOutline,lipAnchors:clayLowerLipAnchors,textures:{},mask:null},
  central:{face:centralFace,folder:'central-visemes-v1',origin:[1824,752],rect:centralSpriteRect,outline:centralHeadOutline,lipAnchors:centralLipAnchors,textures:centralTextures,mask:null},
@@ -217,8 +229,19 @@ function spritePose(config,pose){
  if(pose==='X'||!candidates?.length)return base;
  const previous=config.selection;
  if(previous&&previous.pose===pose&&previous.revision===state.poseRevision)return previous;
+ // Optional weights correspond to the base set followed by each matching variant.
+ if(config.setWeights){
+  const choices=[base,...candidates],weights=config.setWeights;
+  let roll=Math.random()*weights.reduce((sum,w)=>sum+w,0),index=0;
+  while(index<weights.length-1&&roll>=weights[index]){roll-=weights[index];index++;}
+  config.selection={...choices[index],pose,revision:state.poseRevision};return config.selection;
+ }
  const probability=config.baseProbability?.[pose]??.7;
- const selected=Math.random()<probability?base:candidates[Math.floor(Math.random()*candidates.length)];
+ const selected = Math.random() < probability ? base : candidates[
+  config.face.id === 'red-eyes' && pose === 'B'
+    ? (Math.random() < 20 / 30 ? 0 : 1)
+    : Math.floor(Math.random() * candidates.length)
+];
  config.selection={...selected,pose,revision:state.poseRevision};return config.selection;
 }
 function centralGuides(pose){return imagePoseGuides(centralFace,pose);}
@@ -307,13 +330,13 @@ async function setup(image){
  uniforms=Object.fromEntries(['photo','posePhoto','headMask','spriteRect','spriteVisible','resolution','mouth','amount','crop','showGuides','guideRadius','guidePoints[0]','activeFace','geometry','dynamics','axis','faceBounds','softness'].map(k=>[k,gl.getUniformLocation(program,k)]));
  gl.uniform1i(uniforms.photo,0);gl.uniform1i(uniforms.posePhoto,1);gl.uniform1i(uniforms.headMask,2);
  gl.activeTexture(gl.TEXTURE2);
- for(const config of Object.values(spriteFaces))config.mask=uploadTexture(makeHeadMask(config.outline));
+ for(const config of Object.values(spriteFaces))config.mask=uploadTexture(makeHeadMask(config.outline,config.maskFeather));
  gl.activeTexture(gl.TEXTURE0);
  gl.uniform4fv(uniforms.spriteRect,centralSpriteRect);
  $('status').textContent='Loading mouth images… / 正在加载嘴形图片';
  const images=await Promise.all(Object.values(spriteFaces).flatMap(config=>[
    ...Object.entries(centralPoseFiles).map(async([key,file])=>[config,key,await loadPoseImage(file,config.folder,config.version)]),
-   ...Object.values(config.variants??{}).flat().map(async v=>[config,v.key,await loadPoseImage(v.file,v.folder,1)])
+   ...Object.values(config.variants??{}).flat().map(async v=>[config,v.key,await loadPoseImage(v.file,v.folder,v.version??1)])
  ]));
  gl.activeTexture(gl.TEXTURE1);
  for(const [config,key,image] of images)config.textures[key]=uploadTexture(image);

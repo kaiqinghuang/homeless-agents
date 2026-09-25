@@ -53,3 +53,31 @@ Larger black/silver face inside the pale hood immediately left of face four (`le
 ## Seventh face: two active sets — 2026-09-24
 
 Keep the first eight images intact and add eight second-set images in `assets/left-profile-visemes-v2`. The second set has slightly larger, stranger small folded/wedge mouth contours with asymmetric muscle tension. Select set one with 70% probability and set two with 30% for each matching A–H cue; hold the selected still through that cue. No cross-pose selection; rest remains original. Both sets share the same fixed mask, calibration and whole-artwork crop.
+
+## Eighth face — 2026-09-24
+
+Frontal gray bronze face in a brown hood, upper-right of face seven (`upper-left`). Medium change, neither extremely restrained nor large. Character: taut asymmetric muscle tension with opposing lip pressure and uneven cheeks; secondary uneven brow/eyelid response. Keep mouth apertures small, toothless and tongueless; white chin paint remains. Fixed outer face/hood/neck/ground. Eight generated stills plus original rest in `assets/upper-left-visemes-v1`, direct switching and shared artwork crop.
+
+## Eighth face: two active sets — 2026-09-24
+
+Preserve the first eight stills and add eight quieter counterparts in `assets/upper-left-visemes-v2`. The second set is more restrained in both mouth and facial motion, like muttering to oneself: slight uneven lip pressure, narrow shallow seams and minimal secondary cheek/eyelid response. Each matching A–H cue selects the first set with 35% probability or the second set with 65%, held through the cue. Rest, fixed mask, calibration and whole-artwork framing stay unchanged.
+
+## Eighth face: selected third-set replacements — 2026-09-24
+
+Replace Wide in both active collections with the third collection’s Wide. Replace Pressed in the second collection with the third collection’s Pressed. Copy corresponding lip anchors. Keep all other third-set images preserved and exclude the third collection from playback. Continue the modified first/second collections at 35%/65%.
+
+## Eighth face: three active sets — latest selection
+
+Activate all three sets with probabilities 10% / 35% / 55%, in creation order. Keep prior Wide replacements in both earlier sets and Pressed replacement in set two. Select only corresponding poses and hold for each cue; original rest and fixed mask remain. This supersedes earlier third-set inactivity and two-set weighting.
+
+## Ninth face — quiet murmuring
+
+Large dark feminine silver face right of the red-eyed man (`right-large`). Least uncanny of the collection, most restrained. The generated images keep upper-face changes minimal; mainly tiny vertical lip opening/closure with faint unequal heights and a little immediately adjacent muscle motion. Minimal OO rounding, no strong pucker or lateral contraction. Closed eyes, soft photographic focus, empty toothless/tongueless mouth. Latest user correction: use the full facial surface for image switching; keep hair, ornaments, neck and ground outside a fixed face mask. Existing stills remain unchanged. Eight stills plus original rest in `assets/right-large-visemes-v1`.
+
+## Ninth face: second set
+
+`right-large-visemes-v2`: six subtly uncanny, asymmetric expressions with quiet small mouth motion and gentle cheek/closed-eye/brow tension. Whole-face switching remains active. Matching A/B/E/F/G/H cues select the first set with 70% probability and the second with 30%, holding the selection until the next cue. Parted (C) and Open (D) were deleted from the second set and use the first set only. Rest remains original. First-set artwork is preserved.
+
+Ninth-face boundary correction: the shared fixed mask now reaches the hairline, outer cheeks and underside of the chin. A 24px inward transition softens the join across all active stills, without extending into surrounding ground. Other faces keep their previous 8px transition. Sprite images and the 70/30 selection remain unchanged.
+
+Ninth-face image-right expansion: extend the subject-left cheek/jaw replacement through adjacent hair, approximately 45–60 sprite pixels beyond the previous edge. Keep the image-left edge and forehead-strand cutout unchanged. The 24px transition now lies beyond the right cheek rather than across it. Both sets share this mask.

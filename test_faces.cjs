@@ -12,7 +12,7 @@ el('portrait').width=4608;el('portrait').height=2592;el('portrait').clientWidth=
 const ctx=vm.createContext({document:{getElementById:el,querySelector:el,createElement:()=>el(Math.random()),querySelectorAll:()=>[]},
  performance:{now:()=>0},Image:class{},window:{},requestAnimationFrame(){}});
 const run=s=>vm.runInContext(s,ctx);
-run('Math.random=()=>.1');
+run('Math.random=()=>.01');
 run(fs.readFileSync(__dirname+'/app.js','utf8'));
 const faces=run('faces');assert.equal(faces.length,21);
 run("uniforms=Object.fromEntries(['spriteRect','spriteVisible','mouth','amount','crop','activeFace','showGuides','geometry','dynamics','axis','faceBounds','softness','guideRadius','guidePoints[0]'].map(x=>[x,x]));for(const [id,c] of Object.entries(spriteFaces)){Object.assign(c.textures,Object.fromEntries(Object.keys(centralPoseFiles).map(k=>[k,id+':'+k])));c.mask=id+':mask';}state.guides=true;draw();");
@@ -32,12 +32,12 @@ for(const call of calls)assert.deepEqual(Array.from(call.crop),crop,'all face an
 
 let area=0;
 for(const [i,call] of calls.slice(1).entries()){
- assert.equal(call.activeFace,['central','red-eyes','lower-right','small-left','lower-hood','clay-lower','left-profile'].includes(faces[i].id)?2:1);const [x,y,w,h]=call.scissor;
+ assert.equal(call.activeFace,['central','red-eyes','lower-right','small-left','lower-hood','clay-lower','left-profile','upper-left','right-large'].includes(faces[i].id)?2:1);const [x,y,w,h]=call.scissor;
  assert.ok(x>=0&&y>=0&&w>0&&h>0&&x+w<=4608&&y+h<=2592);area+=w*h;
 }
 assert.ok(area/(4608*2592)<.2,'mouth passes should touch only a small part of the native-resolution image');
 for(let i=0;i<faces.length;i++){
- const g=faces[i];if(['central','red-eyes','lower-right','small-left','lower-hood','clay-lower','left-profile'].includes(g.id))continue;run('state.current=[0,1,0]');const rest=Array.from(run(`updateGuides(faces[${i}])`));
+ const g=faces[i];if(['central','red-eyes','lower-right','small-left','lower-hood','clay-lower','left-profile','upper-left','right-large'].includes(g.id))continue;run('state.current=[0,1,0]');const rest=Array.from(run(`updateGuides(faces[${i}])`));
  run('state.current=[1,1,0]');const open=Array.from(run(`updateGuides(faces[${i}])`));
  assert.equal(open.length,42);assert.ok(open.every(Number.isFinite));
  // At index 4 / 7, the upper / lower lip centers move along the local normal.
@@ -56,6 +56,24 @@ for(const pose of ['A','B','C','D','E','F','G','H','X']){
  assert.equal(calls[9].texture,'lower-right:'+pose);assert.equal(calls[9].spriteVisible,pose==='X'?0:1);
  assert.equal(calls[4].texture,'small-left:'+pose);assert.equal(calls[4].spriteVisible,pose==='X'?0:1);
  assert.equal(calls[4].mask,'small-left:mask');
+ assert.equal(calls[8].activeFace,2,'ninth face uses stills, bypassing geometric deformation');
+ assert.equal(calls[8].texture,'right-large:'+pose);assert.equal(calls[8].spriteVisible,pose==='X'?0:1);
+ assert.equal(calls[8].mask,'right-large:mask');
+ assert.deepEqual(Array.from(calls[8].spriteRect),[3424/4608,800/2592,1024/4608,1024/2592]);
+ const ninthGuides=Array.from(run(`imagePoseGuides(spriteFaces['right-large'].face,'${pose}')`));
+ const ninthLips=Array.from(run(`rightLargeLipAnchors['${pose}']`));
+ assert.ok(Math.abs(ninthGuides[2]-(3424+ninthLips[0])*1184/4608)<1e-4);
+ assert.ok(Math.abs(ninthGuides[3]-(800+ninthLips[1])*666/2592)<1e-4);
+ assert.ok(calls[8].scissor[2]>400&&calls[8].scissor[2]<425&&calls[8].scissor[3]>530&&calls[8].scissor[3]<550,'ninth face includes forehead, eyes, cheeks and chin');
+ assert.equal(calls[2].activeFace,2,'eighth face uses image poses');
+ assert.equal(calls[2].texture,'upper-left:'+pose);assert.equal(calls[2].spriteVisible,pose==='X'?0:1);
+ assert.equal(calls[2].mask,'upper-left:mask');
+ assert.deepEqual(Array.from(calls[2].spriteRect),[1056/4608,64/2592,1024/4608,1024/2592]);
+ const eighthGuides=Array.from(run(`imagePoseGuides(spriteFaces['upper-left'].face,'${pose}')`));
+ const eighthLips=Array.from(run(`upperLeftLipAnchors['${pose}']`));
+ assert.ok(Math.abs(eighthGuides[2]-(1056+eighthLips[0])*1184/4608)<1e-4);
+ assert.ok(Math.abs(eighthGuides[3]-(64+eighthLips[1])*666/2592)<1e-4);
+ assert.ok(calls[2].scissor[2]<340&&calls[2].scissor[3]<505,'eighth face stays inside its brown hood');
  assert.equal(calls[3].activeFace,2,'seventh face must bypass the geometric mouth-opening shader');
  assert.equal(calls[3].texture,'left-profile:'+pose);assert.equal(calls[3].spriteVisible,pose==='X'?0:1);
  assert.equal(calls[3].mask,'left-profile:mask');
@@ -91,7 +109,7 @@ for(const pose of ['A','B','C','D','E','F','G','H','X']){
  assert.deepEqual(Array.from(calls[9].spriteRect),[2560/4608,1408/2592,1024/4608,1024/2592]);
  assert.equal(calls[1].mask,'central:mask');assert.equal(calls[7].mask,'red-eyes:mask');
  assert.deepEqual(Array.from(calls[7].spriteRect),[2688/4608,256/2592,1024/4608,1024/2592]);
- for(const id of ['central','red-eyes','lower-right','small-left','lower-hood','clay-lower','left-profile']){
+ for(const id of ['central','red-eyes','lower-right','small-left','lower-hood','clay-lower','left-profile','upper-left','right-large']){
   const anchors=Array.from(run(`imagePoseGuides(spriteFaces['${id}'].face,'${pose}')`));assert.equal(anchors.length,42);assert.ok(anchors.every(Number.isFinite));
  }
 
@@ -105,7 +123,9 @@ assert.equal(run('Object.values(redEyesFirstVariants).flat().length'),12);
 for(const pose of ['A','B','C','D','E','F','G','H']){
  const count=run(`redEyesFirstVariants['${pose}'].length`);
  for(const setRoll of [.0,.5,.699999,.7,.99])for(let index=0;index<count;index++){
-  run(`state.poseRevision++;state.pose='${pose}';randomCalls=0;Math.random=()=>++randomCalls===1?${setRoll}:${(index+.5)/count};`);
+  // Existing red Wide candidates have a 23:7 split inside the 30% collection.
+  const variantRoll=pose==='B'?(index===0?23/60:(23/30+1)/2):(index+.5)/count;
+  run(`state.poseRevision++;state.pose='${pose}';randomCalls=0;Math.random=()=>++randomCalls===1?${setRoll}:${variantRoll};`);
   const selected=run(`spritePose(spriteFaces['red-eyes'],'${pose}')`);
   const expected=setRoll<.7?pose:run(`redEyesFirstVariants['${pose}'][${index}].key`);
   assert.equal(selected.key,expected);
@@ -179,7 +199,7 @@ for(const pose of ['A','B','C','D','E','F','G','H']){
   calls.length=0;run('draw()');
   assert.equal(calls[3].texture,'left-profile:'+expected);
   assert.equal(calls[3].mask,'left-profile:mask');
-  assert.equal(calls[3].activeFace,2);
+ assert.equal(calls[3].activeFace,2);
   assert.deepEqual(Array.from(calls[3].crop),crop);
  }
 }
@@ -189,3 +209,84 @@ run("state.pose='X';state.poseRevision++;Math.random=()=>{throw new Error('rest 
 assert.equal(run("spritePose(spriteFaces['left-profile'],'X').key"),'X');
 calls.length=0;run('draw()');assert.equal(calls[3].spriteVisible,0);
 console.log('PASS: seventh-face 70/30 branches for all eight poses, stable cues, repeat-cue reselection, matching guides, shared framing and original rest.');
+
+// Eighth face: three corresponding sets with exact 10% / 35% / 55% intervals.
+run("for(const v of Object.values(upperLeftVariants).flat())spriteFaces['upper-left'].textures[v.key]='upper-left:'+v.key;");
+assert.deepEqual(Array.from(run("spriteFaces['upper-left'].setWeights")),[10,35,55]);
+assert.equal(run('Object.values(upperLeftVariants).flat().length'),16);
+for(const pose of ['A','B','C','D','E','F','G','H']){
+ assert.equal(run(`upperLeftVariants['${pose}'].length`),2);
+ for(const [roll,set] of [[0,0],[.099999,0],[.1,1],[.449999,1],[.45,2],[.999999,2]]){
+  run(`state.pose='${pose}';state.poseRevision++;randomCalls=0;Math.random=()=>{randomCalls++;return ${roll}};`);
+  const selected=run(`spritePose(spriteFaces['upper-left'],'${pose}')`);
+  const expected=set===0?pose:run(`upperLeftVariants['${pose}'][${set-1}].key`);
+  assert.equal(selected.key,expected);
+  assert.equal(run('randomCalls'),1);
+  run(`for(let i=0;i<60;i++)spritePose(spriteFaces['upper-left'],'${pose}')`);
+  assert.equal(run('randomCalls'),1,'hold eighth-face choice for the entire cue');
+  const guides=Array.from(run(`imagePoseGuides(spriteFaces['upper-left'].face,'${pose}')`));
+  assert.ok(Math.abs(guides[2]-(1056+selected.anchors[0])*1184/4608)<1e-4);
+  assert.ok(Math.abs(guides[3]-(64+selected.anchors[1])*666/2592)<1e-4);
+  calls.length=0;run('draw()');assert.equal(calls[2].texture,'upper-left:'+expected);
+  assert.equal(calls[2].mask,'upper-left:mask');assert.deepEqual(Array.from(calls[2].crop),crop);
+ }
+ // Uniformly spaced samples verify the complete probability intervals, not chance outcomes.
+ const counts=[0,0,0];
+ for(let i=0;i<1000;i++){
+  run(`state.poseRevision++;Math.random=()=>${(i+.5)/1000}`);
+  const key=run(`spritePose(spriteFaces['upper-left'],'${pose}').key`);
+  counts[key===pose?0:key.startsWith('second:')?1:2]++;
+ }
+ assert.deepEqual(counts,[100,350,550]);
+}
+run("state.pose='H';state.poseRevision++;Math.random=()=>.01");
+assert.equal(run("spritePose(spriteFaces['upper-left'],'H').key"),'H','repeated cue can select another set');
+run("state.pose='X';state.poseRevision++;Math.random=()=>{throw new Error('rest must not sample')}");
+assert.equal(run("spritePose(spriteFaces['upper-left'],'X').key"),'X');
+calls.length=0;run('draw()');assert.equal(calls[2].spriteVisible,0);
+console.log('PASS: eighth-face 10/35/55 intervals, all 24 speaking choices, held/repeated cues, guides, framing and original rest.');
+
+// Ninth face: choose the corresponding still from either set, once per cue.
+run("for(const v of Object.values(rightLargeSecondVariants).flat())spriteFaces['right-large'].textures[v.key]='right-large:'+v.key;");
+assert.deepEqual(Array.from(run("spriteFaces['right-large'].setWeights")),[70,30]);
+assert.equal(run('Object.values(rightLargeSecondVariants).flat().length'),6);
+for(const pose of ['A','B','E','F','G','H']){
+ for(const [roll,set] of [[0,0],[.699999,0],[.7,1],[.999999,1]]){
+  run(`state.pose='${pose}';state.poseRevision++;randomCalls=0;Math.random=()=>{randomCalls++;return ${roll}};`);
+  const selected=run(`spritePose(spriteFaces['right-large'],'${pose}')`);
+  const expected=set===0?pose:run(`rightLargeSecondVariants['${pose}'][0].key`);
+  assert.equal(selected.key,expected);
+  run(`for(let i=0;i<60;i++)spritePose(spriteFaces['right-large'],'${pose}')`);
+  assert.equal(run('randomCalls'),1,'hold ninth-face selection throughout the cue');
+  const guides=Array.from(run(`imagePoseGuides(spriteFaces['right-large'].face,'${pose}')`));
+  assert.ok(Math.abs(guides[2]-(3424+selected.anchors[0])*1184/4608)<1e-4);
+  assert.ok(Math.abs(guides[3]-(800+selected.anchors[1])*666/2592)<1e-4);
+  calls.length=0;run('draw()');
+  assert.equal(calls[8].texture,'right-large:'+expected);
+  assert.equal(calls[8].mask,'right-large:mask');
+  assert.deepEqual(Array.from(calls[8].crop),crop);
+ }
+ const counts=[0,0];
+ for(let i=0;i<1000;i++){
+  run(`state.poseRevision++;Math.random=()=>${(i+.5)/1000}`);
+  counts[run(`spritePose(spriteFaces['right-large'],'${pose}').key`)===pose?0:1]++;
+ }
+ assert.deepEqual(counts,[700,300]);
+}
+run("state.pose='H';state.poseRevision++;Math.random=()=>.1");
+assert.equal(run("spritePose(spriteFaces['right-large'],'H').key"),'H');
+run("state.pose='X';state.poseRevision++;Math.random=()=>{throw new Error('rest must not sample')}");
+assert.equal(run("spritePose(spriteFaces['right-large'],'X').key"),'X');
+calls.length=0;run('draw()');assert.equal(calls[8].spriteVisible,0);
+for(const pose of ['C','D']){
+ assert.equal(run(`rightLargeSecondVariants['${pose}']`),undefined);
+ run(`state.pose='${pose}';state.poseRevision++;Math.random=()=>{throw new Error('first-set-only pose must not sample')}`);
+ assert.equal(run(`spritePose(spriteFaces['right-large'],'${pose}').key`),pose);
+ // Other faces still sample their own sets during draw.
+ run('Math.random=()=>.99');
+ calls.length=0;run('draw()');assert.equal(calls[8].texture,'right-large:'+pose);
+}
+console.log('PASS: ninth-face 70/30 intervals, 14 speaking stills, first-set-only Parted/Open, stable cues, guides and rest.');
+
+assert.equal(run("spriteFaces['right-large'].maskFeather"),24);
+assert.ok(run("Object.entries(spriteFaces).every(([id,c])=>id==='right-large'||c.maskFeather===undefined)"),'other faces retain their original feathering');
