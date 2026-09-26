@@ -125,3 +125,31 @@ Dark sculptural head with carved bangs and long side curls (`far-right`). Uncann
 ### Fifteenth face — original Skew restored, 2026-09-26
 
 Nine speech stills plus original rest. Both Skew images are active at 50% each per matching cue. The user explicitly accepts the pale tooth-like speck in the restored initial Skew; preserve that image unchanged. Other poses and the whole-head mask remain unchanged.
+
+## Sixteenth face — 2026-09-26
+
+Pale sculptural face surrounded by elaborate white curls (`wig-left`). Sorrowful uncanny mouth shapes at small amplitude: downturned corners, shallow seams, subtle unequal pressure, inward folds and small openings. Upper face, eyes and nose remain quiet. No teeth, tongue, gums or tooth-like highlights. Whole-head still switching, excluding neck, long hanging curls, surrounding ground and cast shadow. No intermediate frames. Eight speech stills plus original rest in `assets/wig-left-visemes-v1`.
+
+## Seventeenth face — 2026-09-26
+
+Glossy dark sculptural woman with carved curled hair (`lower-left`). Small uncanny asymmetric mouth shapes: overlapping lips, off-center slits, unequal pressure and subtle inward folds. Very faint linked brow and eyelid changes, with the upper face restrained and nose unchanged. No teeth, tongue, gums or tooth-like highlights. Whole-head still switching, excluding neck, earrings and ornament, surrounding ground and cast shadow. No intermediate frames. Eight speech stills plus original rest in `assets/lower-left-visemes-v1`.
+
+## Eighteenth face — 2026-09-26
+
+Pale bald sculptural head (`far-upper-left`). Uncanny asymmetric mouth shapes and perioral flesh: uneven lip layers, compressed corners, small off-center slits and shallow cheek folds. Stronger changes on viewer left (anatomical right), calmer opposite side. Upper face restrained. No teeth, tongue, gums or tooth-like highlights. Whole-head still switching, excluding neck, surrounding ground and cast shadow. No intermediate frames. Eight speech stills plus original rest in `assets/far-upper-left-visemes-v1`.
+
+## Nineteenth face — 2026-09-26
+
+Pale sculptural head with gold woven surround and pointed black beard (`wicker-left`). Restrained uncanny puckered articulation: small gathered lips, gently uneven rims, soft inward folds and tiny openings. Upper face remains quiet, with original brows, eyes, moustache and beard design retained. No teeth, tongue, gums or tooth-like highlights. Whole-head still switching, excluding neck, long beard, gold woven surround, surrounding ground and cast shadow. No intermediate frames. Eight speech stills plus original rest in `assets/wicker-left-visemes-v1`.
+
+## Twentieth face — 2026-09-26
+
+Dark mottled female sculptural face with black bangs and a long pale neck (`far-left`). Restrained sorrowful uncanny articulation: downturned corners, shallow seams, uneven soft pressure, gentle inward folds and small openings. Upper face stays quiet, preserving original eyes, brows, black bangs and mottled facial coloration. No teeth, tongue, gums or tooth-like highlights. Whole-head still switching, excluding neck, surrounding ground and cast shadow. No intermediate frames. Eight speech stills plus original rest in `assets/far-left-visemes-v1`.
+
+## Twenty-first face — 2026-09-26
+
+Dark female sculptural head clipped at the top of the artwork, with a long pale neck and ruffled bust (`top-black`). Restrained uncanny articulation: small asymmetric lip offsets, thin uneven seams, gentle inward folds, quiet compact openings and slight off-center puckering. Upper face stays quiet, preserving original eyes, brows, clipped top-of-head framing, dark material and original curls. No teeth, tongue, gums or tooth-like highlights. Whole-head still switching, excluding neck, surrounding ground and cast shadow. No intermediate frames. Eight speech stills plus original rest in `assets/top-black-visemes-v1`.
+
+## Far upper left — second set enabled, 2026-09-26
+
+Viewer-left emphasis in set 1: 76%; viewer-right emphasis in set 2: 24%. Selection is per matching mouth cue and held for its duration. Rest uses the original artwork. Shared whole-head mask retained.
