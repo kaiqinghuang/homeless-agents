@@ -81,3 +81,47 @@ Large dark feminine silver face right of the red-eyed man (`right-large`). Least
 Ninth-face boundary correction: the shared fixed mask now reaches the hairline, outer cheeks and underside of the chin. A 24px inward transition softens the join across all active stills, without extending into surrounding ground. Other faces keep their previous 8px transition. Sprite images and the 70/30 selection remain unchanged.
 
 Ninth-face image-right expansion: extend the subject-left cheek/jaw replacement through adjacent hair, approximately 45–60 sprite pixels beyond the previous edge. Keep the image-left edge and forehead-strand cutout unchanged. The 24px transition now lies beyond the right cheek rather than across it. Both sets share this mask.
+
+## Tenth face — 2026-09-25
+
+White bald painted head above the central face (`white-upper`). Very strange, uncoordinated mouth shapes, distinct from prior characters: contrary upper/lower lip pressure, local folds, off-center small openings, subtle supporting eye/brow response. No teeth or tongue, including no tooth-like pale ridges along mouth interiors. Original painted patina and glass eyes retained. Eight stills plus original rest in `assets/white-upper-visemes-v1`; whole-head switching inside the fixed exterior silhouette, no intermediate frames.
+
+## Tenth face: two active sets — 2026-09-25
+
+Activate `white-upper-visemes-v2`, focusing on small perioral, nasolabial, lower-cheek and chin-muscle changes with centered, ordinary mouth contours. First set 75%, second set 25% for every matching A–H cue. Hold a selected image through its cue, resample on a new cue, and use original rest. Both sets use the same full-head silhouette and artwork framing.
+
+## Eleventh face — 2026-09-25
+
+Small white painted head with black graphic eye outlines and blue neck (`tiny-right`). Modest mouth opening, but diverse uncanny mouth and facial changes: compressed lip folds, taut narrow slits, small local openings, contrary cheek tension and unequal eyebrow/eyelid response. Preserve painted identity. No teeth or tongue. Eight speaking images plus original rest in `assets/tiny-right-visemes-v1`. Full-head image switching within fixed outer silhouette, including hair and ears; ground, neck and shadow excluded. No intermediate frames.
+
+### Eleventh face — two collections, 80/20
+
+The original collection has 80% probability and the lower-face-focused second collection has 20%, independently per speech cue. Eight matched A–H pairs; hold each selected still through its cue, with the original resting image. Use the existing full-head mask and shared scene crop.
+
+## Twelfth face — 2026-09-25
+
+Gray-white fur-collared head (`ruffle-right`). Main changes are strange asymmetric mouth shapes: offset pressure, uneven lip layers, one-sided slits and restrained inward folds. Other facial regions stay restrained. Keep gray weathered material and cloudy eyes; no teeth or tongue, including tooth-like interior highlights. Eight speech stills plus original rest in `assets/ruffle-right-visemes-v1`, full-head switching without intermediate frames. Neck, fur collar, ground and shadows remain static.
+
+### Twelfth face — flatter second collection, 2026-09-26
+
+Second collection keeps articulation flatter and more restrained: narrower horizontal seams, less vertical movement, subtle lip-layer mismatch and unequal pressure. No teeth or tongue. First collection 50%, second collection 50% per matched speech cue, held through the cue. Original rest and whole-head boundary retained.
+
+## Thirteenth face — 2026-09-26
+
+Gray sculptural head with center-parted hair, earrings and carved goatee (`upper-right`). Taut, tense asymmetric muttering with indistinct lips: mismatched pressure, shallow off-center slits, inward folding and compressed round shapes. Slight linked uneven brow/eyelid tension. No teeth, tongue, gums or tooth-like highlights. Whole-head still switching, excluding neck, earrings, surrounding ground and cast shadow. No intermediate frames. Eight speech stills plus original rest in `assets/upper-right-visemes-v1`.
+
+### Thirteenth face — second collection enabled, 2026-09-26
+
+Both original collections preserved; no individual pose replacement. First collection 20%, second collection 80% per matching speech cue. Second collection has quieter forehead, brows and eyes, with tense ambiguous lip changes and nearby muscle tension. No teeth or tongue. Shared whole-head mask and original rest.
+
+## Fourteenth face — 2026-09-26
+
+Wrapped sculptural head with dark cheek paint and crossing cloth bands (`wrapped`). Asymmetry comes mainly from unequal inward pressure, hollows and small diagonal pulls in both cheeks. Upper face remains quiet and mouth movement stays small. Preserve the existing cloth bands and their facial coverage. No teeth, tongue, gums or tooth-like highlights. Whole-head still switching, excluding wrapped torso, surrounding ground and cast shadow. No intermediate frames. Eight speech stills plus original rest in `assets/wrapped-visemes-v1`.
+
+## Fifteenth face — 2026-09-26
+
+Dark sculptural head with carved bangs and long side curls (`far-right`). Uncanny asymmetric mouth shapes at small amplitude: uneven lip pressure, thin offset slits, inward folds and restrained oval openings. Upper face, eyes, nose and other facial regions remain quiet. No teeth, tongue, gums or tooth-like highlights. Whole-head still switching, excluding neck, collar, hanging hair tails, surrounding ground and cast shadow. No intermediate frames. Eight speech stills plus original rest in `assets/far-right-visemes-v1`.
+
+### Fifteenth face — original Skew restored, 2026-09-26
+
+Nine speech stills plus original rest. Both Skew images are active at 50% each per matching cue. The user explicitly accepts the pale tooth-like speck in the restored initial Skew; preserve that image unchanged. Other poses and the whole-head mask remain unchanged.

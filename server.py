@@ -15,8 +15,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 STATIC_PATHS = {'/', '/index.html', '/app.js', '/agent.js', '/listening.js', '/audio-capture.js', '/listening.css', '/assets/portrait.png'}
 STATIC_PATHS.update('/assets/' + folder + '/' + name + '.png'
-    for folder in ('central-visemes-v1', 'red-eyes-visemes-v1', 'brown-face-visemes-v1', 'small-left-visemes-v1', 'lower-hood-visemes-v1', 'clay-lower-visemes-v1', 'left-profile-visemes-v1', 'upper-left-visemes-v1', 'right-large-visemes-v1')
+    for folder in ('central-visemes-v1', 'red-eyes-visemes-v1', 'brown-face-visemes-v1', 'small-left-visemes-v1', 'lower-hood-visemes-v1', 'clay-lower-visemes-v1', 'left-profile-visemes-v1', 'upper-left-visemes-v1', 'right-large-visemes-v1', 'white-upper-visemes-v1', 'tiny-right-visemes-v1', 'ruffle-right-visemes-v1', 'upper-right-visemes-v1', 'wrapped-visemes-v1', 'far-right-visemes-v1')
     for name in ('00-rest', '01-pressed', '02-wide', '03-parted', '04-open', '05-oh', '06-oo', '07-fold', '08-skew'))
+STATIC_PATHS.add('/assets/far-right-visemes-v1/09-skew-initial.png')
 STATIC_PATHS.update('/assets/red-eyes-first11/' + name + '.png' for name in ('01-pressed', '02-wide', '03-parted-initial', '04-open', '05-oh', '06-oo-initial', '07-fold', '08-skew-initial', '09-oo-expression', '10-parted-expression', '11-skew-expression', '12-wide-expression'))
 
 STATIC_PATHS.update('/assets/lower-hood-visemes-v1/' + name + '.png' for name in ('09-wide-initial', '10-open-initial', '11-oh-initial', '12-fold-initial', '13-fold-intermediate'))
@@ -26,6 +27,11 @@ STATIC_PATHS.update('/assets/upper-left-visemes-v2/' + name + '.png' for name in
 STATIC_PATHS.update('/assets/upper-left-visemes-v3/' + name + '.png' for name in ('01-pressed', '02-wide', '03-parted', '04-open', '05-oh', '06-oo', '07-fold', '08-skew'))
 
 STATIC_PATHS.update('/assets/right-large-visemes-v2/' + name + '.png' for name in ('01-pressed', '02-wide', '05-oh', '06-oo', '07-fold', '08-skew'))
+
+STATIC_PATHS.update('/assets/white-upper-visemes-v2/' + name + '.png' for name in ('01-pressed', '02-wide', '03-parted', '04-open', '05-oh', '06-oo', '07-fold', '08-skew'))
+STATIC_PATHS.update('/assets/tiny-right-visemes-v2/' + name + '.png' for name in ('01-pressed', '02-wide', '03-parted', '04-open', '05-oh', '06-oo', '07-fold', '08-skew'))
+STATIC_PATHS.update('/assets/ruffle-right-visemes-v2/' + name + '.png' for name in ('01-pressed', '02-wide', '03-parted', '04-open', '05-oh', '06-oo', '07-fold', '08-skew'))
+STATIC_PATHS.update('/assets/upper-right-visemes-v2/' + name + '.png' for name in ('01-pressed', '02-wide', '03-parted', '04-open', '05-oh', '06-oo', '07-fold', '08-skew'))
 
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
