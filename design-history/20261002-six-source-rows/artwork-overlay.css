@@ -12,8 +12,6 @@
 .hud-tree::before{content:"";position:absolute;left:0;top:calc(20 * var(--u));height:calc(264 * var(--u));width:calc(1.5 * var(--u));background:rgba(230,230,230,.5)}
 .hud-branch::before{content:"";position:absolute;left:0;width:calc(10 * var(--u));height:calc(1.5 * var(--u));margin-top:calc(20 * var(--u));background:rgba(230,230,230,.5)}
 .hud-sources{position:relative;margin-left:calc(29 * var(--u));height:calc(5 * 66 * var(--u));overflow:hidden;mask-image:linear-gradient(to bottom,#000 0%,#000 80%,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 80%,transparent 100%)}
-/* Extend the source line upward by 12 native pixels, outside the clipped scrolling viewport. */
-.hud-tree::after{content:"";position:absolute;left:calc(42 * var(--u));top:calc(318 * var(--u));height:calc(12 * var(--u));width:calc(1.5 * var(--u));background:rgba(230,230,230,.5)}
 .hud-sources::before{content:"";position:absolute;top:0;bottom:calc(46 * var(--u));left:0;width:calc(1.5 * var(--u));background:rgba(230,230,230,.5)}
 .hud-source-track{will-change:transform}
 .hud-source{position:relative;height:calc(66 * var(--u));padding-left:calc(13 * var(--u));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.5}

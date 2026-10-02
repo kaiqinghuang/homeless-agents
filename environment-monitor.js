@@ -4,7 +4,7 @@
  let active=false,starting=false,revision=0,pollTimer=null,preference='builtin';
  const session=crypto.randomUUID();
  try{preference=localStorage.getItem(key)||'builtin';}catch(e){}
- const caption=text=>{el('hud-recording').textContent='Recording: '+text;};
+ const caption=text=>{el('hud-recording').textContent='Noise Recording: '+text;};
  function buttons(){el('monitor-toggle').textContent=active||starting?'Stop listening':'Start listening';el('monitor-input').disabled=active||starting;}
  async function post(action,data={}){
   const r=await fetch('/api/environment/'+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
