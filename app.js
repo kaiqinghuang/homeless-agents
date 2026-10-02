@@ -489,7 +489,7 @@ function frame(now){
 }
 function setProgress(value){$('progress').style.width=value+'%';document.querySelector('.track').setAttribute('aria-valuenow',Math.round(value));}
 function updateSubtitle(){
- const text=state.playing?state.plan?.caption??'':'';
+ const text=state.playing?'Output: '+(state.plan?.caption??''):'Output:';
  if($('word-subtitle').textContent!==text)$('word-subtitle').textContent=text;
 }
 function highlight(index){
@@ -531,11 +531,12 @@ $('guides').addEventListener('click',()=>{state.guides=!state.guides;$('guides')
 $('fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await $('stage').requestFullscreen();}catch(error){$('error').textContent='Full screen is unavailable here. Open this page in Safari or Chrome.';}});
 $('text').addEventListener('keydown',event=>{if(event.key==='Enter'&&(event.metaKey||event.ctrlKey)){event.preventDefault();if(state.ready)play();}});
 canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();state.ready=false;stop();$('error').textContent='Graphics context lost. Reload the page to restore the portrait.';});
-const portrait=new Image();portrait.onload=async()=>{try{await setup(portrait);}catch(error){$('error').textContent=error.message;$('status').textContent='Could not render portrait';}};portrait.onerror=()=>{$('error').textContent='Portrait image could not be loaded.';};portrait.src='assets/portrait.png?v=composition-20260922-1';
+const portrait=new Image();portrait.onload=async()=>{try{await setup(portrait);}catch(error){$('error').textContent=error.message;$('status').textContent='Could not render portrait';}};portrait.onerror=()=>{$('error').textContent='Portrait image could not be loaded.';};portrait.src='assets/portrait.png?v=main-image-1-20261002';
 
 // Both generated replies and the optional transcript echo use the same player.
 let automaticRequest=null;
 window.afterimageMotion = {
+ snapshot(){return {pose:state.pose,label:labels[state.pose]||'Rest',pace:sliderValue('speed'),playing:state.playing};},
  isBusy(){return !state.ready||state.playing||$('play').disabled;},
  isAutomatic(){return automaticRequest===state.request&&(state.playing||$('play').disabled);},
  cancelEcho(){if(automaticRequest===state.request)stop();automaticRequest=null;},

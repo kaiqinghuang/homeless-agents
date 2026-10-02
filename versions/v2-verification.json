@@ -1,0 +1,13 @@
+{
+  "active_version": 2,
+  "v1_snapshot_files": 502,
+  "shared_artwork_unchanged": true,
+  "animation_code_change": "background cache key only",
+  "original_faces": 21,
+  "alignment": "All 21 mouth patches matched with 0px translation; see v2-alignment-check.json.",
+  "tests": [
+    "test_faces.cjs passed",
+    "test_playback.cjs passed"
+  ],
+  "browser": "Version 2 title, new background, continuous text playback and existing face animation verified."
+}

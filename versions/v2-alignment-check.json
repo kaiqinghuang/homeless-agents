@@ -1,0 +1,176 @@
+{
+  "image_size": [
+    4608,
+    2592
+  ],
+  "mouth_patch_checks": [
+    {
+      "face": "central",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.99711
+    },
+    {
+      "face": "upper-left",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.99652
+    },
+    {
+      "face": "left-profile",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.99698
+    },
+    {
+      "face": "small-left",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.99773
+    },
+    {
+      "face": "lower-left",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.92523
+    },
+    {
+      "face": "lower-hood",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.91031
+    },
+    {
+      "face": "red-eyes",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.99908
+    },
+    {
+      "face": "right-large",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.99838
+    },
+    {
+      "face": "lower-right",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.99739
+    },
+    {
+      "face": "tiny-right",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.95191
+    },
+    {
+      "face": "upper-right",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.93021
+    },
+    {
+      "face": "wrapped",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.96142
+    },
+    {
+      "face": "far-upper-left",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.97374
+    },
+    {
+      "face": "top-black",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.89188
+    },
+    {
+      "face": "far-left",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.93007
+    },
+    {
+      "face": "wicker-left",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.95406
+    },
+    {
+      "face": "wig-left",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.93295
+    },
+    {
+      "face": "white-upper",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.98063
+    },
+    {
+      "face": "clay-lower",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.96203
+    },
+    {
+      "face": "ruffle-right",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.97562
+    },
+    {
+      "face": "far-right",
+      "offset_px": [
+        0,
+        0
+      ],
+      "match": 0.9258
+    }
+  ]
+}

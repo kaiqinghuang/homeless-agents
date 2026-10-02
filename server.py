@@ -11,11 +11,12 @@ from mouth_plan import plan
 from agent_runtime import LocalAgent
 from residue_runtime import ResidueGenerator
 from residue_plan import residue_plan
+from environment_monitor import EnvironmentMonitor
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-STATIC_PATHS = {'/', '/index.html', '/app.js', '/residue.js', '/agent.js', '/listening.js', '/audio-capture.js', '/listening.css', '/assets/portrait.png'}
+STATIC_PATHS = {'/artwork-overlay.css', '/artwork-overlay.js', '/environment-monitor.js', '/assets/training-sources.json', '/', '/index.html', '/app.js', '/residue.js', '/agent.js', '/listening.js', '/audio-capture.js', '/listening.css', '/assets/portrait.png'}
 STATIC_PATHS.update('/assets/' + folder + '/' + name + '.png'
     for folder in ('central-visemes-v1', 'red-eyes-visemes-v1', 'brown-face-visemes-v1', 'small-left-visemes-v1', 'lower-hood-visemes-v1', 'clay-lower-visemes-v1', 'left-profile-visemes-v1', 'upper-left-visemes-v1', 'right-large-visemes-v1', 'white-upper-visemes-v1', 'tiny-right-visemes-v1', 'ruffle-right-visemes-v1', 'upper-right-visemes-v1', 'wrapped-visemes-v1', 'far-right-visemes-v1', 'wig-left-visemes-v1', 'lower-left-visemes-v1', 'far-upper-left-visemes-v1', 'wicker-left-visemes-v1', 'far-left-visemes-v1', 'top-black-visemes-v1')
     for name in ('00-rest', '01-pressed', '02-wide', '03-parted', '04-open', '05-oh', '06-oo', '07-fold', '08-skew'))
@@ -62,7 +63,21 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         path = urlsplit(self.path).path
-        if path == '/api/residue/status':
+        if path == '/api/environment/status':
+            self.respond(self.server.monitor.status())
+        elif path == '/api/environment/devices':
+            try:
+                self.respond({'devices': self.server.monitor.devices()})
+            except Exception as error:
+                self.respond({'error': str(error)}, 503)
+        elif path == '/api/artwork/info':
+            cfg = self.server.residue.config
+            training = json.loads((ROOT / 'training/residue-qwen05-20261001/config.json').read_text())
+            self.respond({'base_model': 'Qwen2.5-0.5B', 'steps': 180,
+                          'learning_rate': training['learning_rate'], 'rank': training['lora_parameters']['rank'],
+                          'scale': training['lora_parameters']['scale'], 'temperature': cfg['temperature'],
+                          'top_p': cfg['top_p'], 'context_tokens': cfg['context_tokens']})
+        elif path == '/api/residue/status':
             self.respond(self.server.residue.status())
         elif path == '/api/status':
             self.respond({'stage': 5, 'engine': self.server.agent.status(), 'agent': self.server.agent.status(), 'archive': self.server.archive.today()})
@@ -87,22 +102,36 @@ class Handler(SimpleHTTPRequestHandler):
         if origin and urlsplit(origin).netloc != self.headers.get('Host'):
             self.respond({'error': 'Only the local app can submit recordings.'}, 403)
             return
-        if parsed.path not in ('/api/residue/start', '/api/residue/next', '/api/residue/stop', '/api/plan', '/api/audio', '/api/room', '/api/engine/start', '/api/agent/start', '/api/agent/decide', '/api/agent/test'):
+        if parsed.path not in ('/api/environment/start', '/api/environment/stop', '/api/environment/observe', '/api/residue/start', '/api/residue/next', '/api/residue/stop', '/api/plan', '/api/audio', '/api/room', '/api/engine/start', '/api/agent/start', '/api/agent/decide', '/api/agent/test'):
             self.send_error(404)
             return
         try:
             size = int(self.headers.get('Content-Length', '0'))
-            maximum = 500000 if parsed.path == '/api/audio' else 16000
+            maximum = 500000 if parsed.path in ('/api/audio', '/api/environment/observe') else 16000
             if not 0 < size <= maximum:
                 raise ValueError('Invalid request size.')
             payload = self.rfile.read(size)
+            if parsed.path == '/api/environment/observe':
+                if self.server.agent.status()['state'] != 'ready':
+                    self.respond({'error': self.server.agent.error or 'Audio model is loading.'}, 503)
+                    return
+                result = self.server.agent.observe(payload)
+                self.respond(result, 409 if result.get('busy') else 200)
+                return
             if parsed.path == '/api/audio':
                 self.handle_audio(payload, parse_qs(parsed.query))
                 return
             data = json.loads(payload)
             if not isinstance(data, dict):
                 raise ValueError('Expected an object.')
-            if parsed.path == '/api/residue/start':
+            if parsed.path == '/api/environment/start':
+                result = self.server.monitor.start(data.get('device', 'builtin'), data.get('session'))
+            elif parsed.path == '/api/environment/stop':
+                session = data.get('session')
+                if not isinstance(session, str) or not session:
+                    raise ValueError('A monitor session is required.')
+                result = self.server.monitor.stop(session)
+            elif parsed.path == '/api/residue/start':
                 result = self.server.residue.start()
             elif parsed.path == '/api/residue/next':
                 result = self.server.residue.next(data.get('session'))
@@ -177,14 +206,16 @@ if __name__ == '__main__':
     server.archive = AudioArchive(args.data_dir)
     server.agent = LocalAgent(ROOT, server.archive)
     server.residue = ResidueGenerator(ROOT, args.data_dir / 'residue')
+    server.monitor = EnvironmentMonitor(ROOT, server.agent)
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
     print(f'Afterimage · Continuous text: http://127.0.0.1:{server.server_port}', flush=True)
-    print('Click Start generating. Microphone stays off. Text logs: ' + str(args.data_dir / 'residue'), flush=True)
+    print('Click Start generating. Environment monitor displays audio observations without training. Text logs: ' + str(args.data_dir / 'residue'), flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
         server.server_close()
+        server.monitor.close()
         server.agent.close()
         server.residue.close()

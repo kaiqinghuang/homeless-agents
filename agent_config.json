@@ -9,5 +9,6 @@
   "temperature": 0.8,
   "num_predict": 48,
   "mode": "environment-en-v1",
-  "adapter_path": "training/gallery-drift-20260929/adapter"
+  "adapter_path": "training/gallery-drift-20260929/adapter",
+  "observation_num_predict": 14
 }

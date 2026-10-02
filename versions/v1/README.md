@@ -1,0 +1,143 @@
+## Continuous text mode — selected LoRA 180
+
+Caption update (2026-10-01): the artwork shows the entire current playback text at once, including during internal pauses, and clears it on completion/stop. The background is transparent; long text wraps within 90% of the image width. Font, color, size and bottom anchor are retained. Exact previous boxed word-caption CSS and source are saved in `design-history/20261001-word-caption-box/` for restoration. Continuous output arrives in chunks, so a displayed passage is the current playback chunk, which may be a sentence fragment.
+
+The default page now runs Qwen2.5-0.5B with the user-selected 180-step adapter. Open Start.command and click **Start generating**. Stop cancels automatic mouth playback and discards queued text. The microphone UI and startup are disabled in this mode; audio collection code and APIs are retained.
+
+The fixed adapter is `models/residue-qwen05-step180/`, with its selection record and checksum. The base model is separately preserved in `models/qwen2.5-0.5b-base-4bit/`. `residue_config.json` identifies both. This is inference only; weights do not change while it runs.
+
+Each start creates a fresh random session seeded with the text `The`. Subsequent chunks continue the previous generated token sequence, retaining at most 2048 tokens. Temperature 0.9 and top-p 0.95 match the comparison experiment. End/control tokens are suppressed to keep the stream running until Stop; no role or style prompt is added. Chunks are prefetched only one at a time, so playback controls the rate. Length update: each chunk now seeks a sentence ending after 24 tokens; after 36 tokens it also accepts whitespace or a line break, with the existing 64-token hard cap. The loop guard can still end a chunk earlier. This changes the amount of text per playback, not mouth speed, sampling settings or weights. Chunks try to end on whitespace/punctuation; unusually long runs may split. Mixed-language pronunciation uses the existing approximate engine; standalone symbols and embedded emoji receive random non-rest mouth cues (0.3 base seconds each), while their literal captions are retained. Ordinary English timing is unchanged. A loop guard permits brief repetitions but resets continuation context to the original `The` seed when a substring repeats six times across chunks (at least 12 non-whitespace characters), or after four empty chunks. It does not alter model weights or sampling settings; recovery is recorded in the generation log.
+
+Generation records (including the one queued chunk, which might not be played if stopped) are saved to `data/residue/text-output.jsonl`, rotating at 5 MB with three backups. Existing captions, all 21 face libraries, probabilities, framing and preferred pace remain in use. The reference implementation and 64-sample comparison remain under `training/residue-qwen05-20261001/`.
+
+Checks: `test_residue_recovery.py` covers cross-chunk loops, empty output, symbol and embedded-emoji cues, exact captions and unchanged English timing. A 40-chunk replay of the actual failing seed is recorded in `training/residue-qwen05-20261001/loop-regression.jsonl`. `test_residue_ui.cjs` covers backpressure and cancellation; `test_residue_http.py` exercises a running server and real LoRA inference; existing mouth/player/face tests cover alignment and libraries. Pre-integration files are preserved in `training/residue-qwen05-20261001/integration-backup/`.
+
+# Afterimage · Step 05 — English environmental self-training
+
+Active behavior (2026-09-29): microphone waveform goes directly into local Qwen2-Audio, with an optional audio-conditioned LoRA. No speech transcription or human captions are used as model input. Responses are English words/fragments; background sounds do not need to contain a question. The 21-face visuals and mouth timing are unchanged.
+
+The browser captures consecutive approximately 8-second ambient windows while listening, independently of voice activity. A bounded upload queue reports skipped clips on overload; browser suspension, stop (including a partial tail) and failures can interrupt capture, so this is not a lossless recorder. Inference uses the latest input rather than accumulating a backlog. Digital/near silence below -65 dBFS is still gated. Responses have a 2-second cooldown and ambient inference a minimum 8-second interval. Source sounds remain on this Mac. These intervals are pacing controls, not measured novelty or acoustic classifications.
+
+Only English is accepted in the current live mode. Previous Chinese browser preferences are ignored. Plain model words are wrapped into the existing playback contract; `salience` is a binary transport value (1 for words, 0 for an explicit silent marker), not a model confidence score. No fixed artistic persona, authored weird-word list or fallback replies are injected. The model can still describe sounds, repeat words, or hallucinate; this is an art experiment, not reliable sound recognition.
+
+Successful live audio responses are paired with the original recording and saved to `data/environment-pairs.jsonl`, including audio checksum, exact prompt/context, model/adapter digest, and decision ID. This does not mean that every archived clip is trained, or that a saved response actually played. Text tests and rejected/error outputs are excluded. The current training run is a one-off experiment; automatic periodic retraining is NOT enabled.
+
+The reproducible pilot is `gallery_lora.py`. Use the audio virtual environment: `.venv-audio/bin/python gallery_lora.py --phase seed`, then `--phase train --steps 60`, or `--phase compare` to load the saved adapter and repeat held-out tests. It requires a normal local Metal session. Downloaded CC0 recordings, exact source/license URLs, source-separated split, generated pairs, before/after outputs, training log and adapter are under `training/gallery-seed-20260929/`. This local directory is ignored by Git and not served over HTTP. No uploaded/cloud inference or training is used.
+
+The adapter is rank 4 on q/v projections of the last four language layers (262,144 trainable parameters). Audio tower, projector and base language weights remain frozen. Training uses real waveform-conditioned hidden states, with target-only cross entropy; a frozen-prefix cache reduces memory. Model-generated labels are not factual annotations. Checkpoints are selected on held-out self-generated target loss, not artistic quality; independent recording sources are reserved for output comparisons. Base model and prompt identity are checked when loading an adapter.
+
+The follow-up experiment `training/gallery-drift-20260929/` continues the original saved LoRA for 240 additional steps on the same 37 training pairs. It deliberately retains the final checkpoint for artistic inspection (`--checkpoint-selection final`), even though validation self-target loss worsened from 0.687 to 1.075. In 18 matched held-out comparisons, nine outputs changed; distinct outputs fell from nine to seven. Replies remain ordinary descriptions, with somewhat shorter wording and more repetition. This is not an established artistic improvement. The original adapter is preserved at `training/gallery-seed-20260929/adapter`. `--init-adapter <path>` continues saved weights with fresh optimizer state in a new run directory; default checkpoint selection remains validation loss. Neither automatic retraining nor inference/prompt/visual settings changed.
+
+`agent_config.json` selects `adapter_path`. To return to base-model environment mode, set it to null and reconnect/restart the model. Original pre-environment code/settings are kept locally in the experiment's `before-code/` directory. Do not overwrite base model weights.
+
+Earlier implementation notes below are historical and may describe superseded language, sampling and visual settings.
+
+---
+
+# Afterimage · Step 04 — Direct audio
+
+Microphone waveform → local Qwen2-Audio encoder and language model → respond/silence decision → phoneme-driven silent portrait. Incoming recordings are **not transcribed or captioned** before the decision. There is no training yet.
+
+## Run
+
+On this Mac, double-click `Start.command` in Finder, then open http://127.0.0.1:8766 in Safari or Chrome. Keep the terminal and page open and the Mac awake. Click **Start listening** to enable the microphone; **Stop listening** releases it and cancels pending playback. Control-C stops the server and its owned audio worker. Ollama is no longer required.
+
+The direct-audio model is already downloaded into `models/qwen2-audio-7b-4bit/` (~6.56 GB). Dependencies are isolated in `.venv-audio/`. On another Apple Silicon Mac, install Python 3.10+, Git and the Xcode command-line tools, then run `Setup.command`. Setup needs internet; normal operation loads local assets only, with Hugging Face offline mode enabled. MLX requires a Metal-capable local session; if the page says GPU unavailable, launch from Finder/Terminal rather than a restricted agent session. No cloud inference or transcription fallback is used.
+
+## Direct listening
+
+- The audio model is **Qwen2-Audio-7B-Instruct**, a 4-bit MLX conversion, with the audio encoder and projector kept in bf16. It can receive speech, environmental sound and music. Although its audio encoder uses a Whisper architecture, no Whisper transcription decoder is run: numeric sound features are projected directly into the language model's embedding sequence.
+- The same audio model first decides whether to respond, then generates a reply if appropriate. Both passes consume audio embeddings; no intermediate transcript or caption is created. Encoded audio is reused within the request. The worker normalizes JSON / literal-dictionary formatting without executing generated code.
+- The worker uses the model's official WhisperFeatureExtractor (Slaney mel filters), the actual audio token length, and excludes padding from audio attention. It emits only the final response decision, not an intermediate transcript.
+- **Language mode** has only **English** (default) and **中文 / Mandarin**. It fixes the listening instruction and reply language for audio and text tests; there is no Auto/Mix mode. The browser remembers the selection. Switching clears pending audio/replies and starts a fresh conversation context. Backend memory is also filtered by language. Both modes share one loaded audio model, with no extra model or inference pass. This is a fixed model instruction and output validation, not an acoustic filter that rejects all other languages.
+- **Autonomous response** lets the model decide; **Collect only** records without model decisions or mouth playback. The old transcript echo option has been removed. The collapsed text test is still available for testing the decision policy, independently of audio.
+- The built-in Mac microphone is selected by its exact device ID when its name is available. iPhone/Continuity inputs are excluded from that default. An external input can be selected and remembered. If names are hidden, choose an explicitly named device after granting browser access; the System default option may route to a phone.
+- Noise suppression, echo cancellation and auto gain are requested off. Actual microphone/browser support varies.
+- **Test audio file** accepts a local 0.4–15-second clip and passes its waveform through the same decision path. Files are recorded in the archive too.
+
+## Response control
+
+The functional prompt in `agent_prompt.txt` retains respond/silence, fixed-language replies and the JSON output contract. It has no artistic persona or poetic style. The default response threshold is 0.60 (hidden slider); edit `agent_config.json` and restart to change it. Model salience is a judgment, not a calibrated probability.
+
+The quiet gate (< −65 dBFS), 12-second post-reply cooldown, 45-second periodic ambient decision interval, bounded latest-input queue, cancellation and face-busy protection remain. Ambient is a capture source, not an ASR classification. Active sounds are allowed through regardless of whether they contain speech. The frontend can capture/record while inference runs. Invalid model JSON and inference failures are shown as errors, never silently replaced with an invented reply or transcription pipeline.
+
+Previous generated replies from the same session and prompt version may be supplied as text context. Previous transcripts and numeric sound descriptors are not sent to the audio model. Historical records remain on disk. Text tests do not enter live conversation memory. A saved generated reply is not proof that the mouth actually played it.
+
+## Recording and archive
+
+This version retains the existing **representative sampling** scheme: sound activity becomes clips of up to about 10 seconds; a 5-second background sample is captured about every 20 seconds while idle. It is not lossless continuous recording of every sound. Room level measurements are saved every 10 seconds but are not used as a substitute for audio model input.
+
+Recordings are 16 kHz mono PCM16 WAV, saved under `data/YYYY-MM-DD/`, alongside `events.jsonl`; `data/events.sqlite3` indexes events. New nonquiet recordings have kind `audio`, empty text and `transcription: false`. Decisions record `input_representation: audio_embeddings`, model revision, prompt hash, result and duration. The response language field describes the reply, not an ASR-detected language. Very quiet clips use the existing silence gate.
+
+Recordings, models and dependencies are ignored by Git and blocked from static HTTP access. Worker diagnostics are in `data/direct-audio.log`. Old Whisper/Ollama assets and archived events are retained, but neither engine is started by this application now. No daily LoRA or automatic parameter changes are included in this step.
+
+## Try
+
+1. Play the English example.
+2. Select the Chinese example and play it.
+3. Enter mixed text, such as `Hello，你还在这里吗？`.
+4. Use **Inspect face** to examine the mouth.
+5. Adjust movement strength. Pace applies to the next playback; changing it stops current playback.
+6. Expand the mouth-shape inspector to hold an individual shape.
+
+Command-Enter plays the current text. Stop smoothly returns the mouth to rest. Full screen shows the image alone.
+
+## What this version does
+
+- Converts whole English and Mandarin phrases to pronunciation phonemes with eSpeak NG, then maps those phonemes to the existing nine mouth poses. English uses the en-US pronunciation voice. Script changes select the voice for mixed-language text.
+- Uses phoneme event timestamps from local synthesis, rather than equal time per letter. Diphthongs move through multiple poses (e.g. /eɪ/ → EH → EE). Punctuation pauses and all original caption text are preserved. Mandarin dictionary phrases can share one highlight across several characters.
+- Exposes the generated IPA on hover over the playback words. The **Inspect pronunciation / 检查发音** panel is retained but hidden in the simplified interface. The playback label includes **PHONEMES**; an old server is rejected with a restart prompt instead of silently using spelling rules.
+- Pronunciation is still imperfect for names, heteronyms such as past-tense “read,” and some Chinese polyphonic words. The nine visual poses are approximate; this is not a full facial articulator or alignment to incoming microphone audio. Numbers follow the pronunciation engine and the surrounding language, rather than being hard-coded English digits.
+- Deforms the original lip texture locally using WebGL, with a procedural dark mouth interior. This tests motion and timing; it is not final photorealistic mouth artwork.
+- Leaves the rest of the original image still. No AI-generated replacement images are used.
+
+## Dependencies and verification
+
+Model: `mlx-community/Qwen2-Audio-7B-Instruct-4bit`, revision `c65570002626f41b4dc08b7b54f42f99f3e82e7f`. Runtime dependencies and mlx-audio commit are pinned in `requirements-audio.txt`; setup is in `setup_direct_audio.py`. The official model card is https://huggingface.co/Qwen/Qwen2-Audio-7B-Instruct and the MLX implementation is https://github.com/Blaizzy/mlx-audio/tree/main/mlx_audio/stt/models/qwen2_audio.
+
+Automated checks:
+
+```sh
+python3 -m unittest test_agent test_audio_decision test_direct_audio_http test_mouth_plan
+node test_agent_ui.cjs
+node test_language_switch.cjs
+node test_playback.cjs
+node test_faces.cjs
+```
+
+These cover waveform upload without an ASR engine, passing the archived WAV to inference (never its transcript), language policy, gates, errors, history isolation, cancellation, private file access and response-to-phoneme playback. Real GPU inference must also be tested from a normal local session.
+
+### Local validation, 2026-09-17
+
+The user-launched Metal worker was tested with synthesized English and Mandarin WAV files and synthetic white noise. English “What color is a ripe banana?” produced “Yellow”; a Mandarin greeting produced a Chinese reply; white noise produced a model-selected silent decision; zero audio used the quiet gate. The earlier automatic language mode sometimes answered Mandarin in English; it has now been removed in favor of fixed English and Mandarin modes. These are functional smoke tests, not an accuracy benchmark or a 24-hour soak test. Typical tested decisions took about 1.7–4 seconds after loading, excluding capture and mouth playback.
+
+Fixed-mode regression: English → Mandarin → English audio produced “Yellow”, “2加3等于5”, and “Two plus three equals five” in the selected modes. White noise produced silence in each mode. These five local GPU checks took approximately 1.2–3.3 seconds per decision. Automated switching checks also reject late uploads and files still decoding under the previous mode.
+
+### Portrait composition
+
+The active image is the 4608 × 2592 multi-face composition from `0.4/9.22.1.jpg` (converted to PNG for the existing asset endpoint). Canvas and texture use the full native resolution; animation retains its 1184 × 666 calibration space so mouth movement and guide dots keep their previous apparent sizes. All 21 faces with visible mouths are animated together from the same phoneme timeline; the partial object cropped at the top has no visible mouth and remains static. Each face has a manually calibrated mouth center, width, tilt, curvature and local animation boundary. The guide toggle shows lip anchors and four cheek anchors on each side of every face; small faces use proportionally smaller dots. Inspect face keeps the existing central-face zoom. One full-resolution background pass is followed by scissored local face passes, limited to the local mouth regions; one guide array is reused per face to avoid oversized GPU uniform arrays. No additional AI model or inference calls are introduced. Existing pace, mouth amount and OO/OH shapes are retained. The earlier single-face image is backed up as `assets/portrait-original.png`. Reload the browser after replacing visual assets; no model restart is needed.
+
+
+### Individual face image-pose libraries
+
+Before generating or revising future poses, follow the user's amplitude and expression standard in [ART_DIRECTION.md](ART_DIRECTION.md): restrained, peculiar expressions with most change around the mouth and lighter supporting upper-face motion. For the new red-eye-shadow set, the third brown face is the amplitude reference.
+
+The central, red-eye-shadow, lower-right brown and nearest small left hooded faces switch directly between their own nine stills in `assets/central-visemes-v1`, `assets/red-eyes-visemes-v1`, `assets/brown-face-visemes-v1` and `assets/small-left-visemes-v1`, using the existing phoneme timeline (X rest, A pressed, B wide, C parted, D open, E OH, F OO, G folded lip, H skew). There is no temporal blending, interpolation, generated intermediate frame, or geometric mouth warp on these four faces. Each whole head (including eyes and forehead) comes from its own selected still. A fixed inset silhouette follows the crown, ears, cheeks and chin. Its 8px feather is clipped entirely inside the head, so the surrounding soil and cast shadow always come from the original portrait. Approximate guide anchors switch with each still. Rest and Stop show the original main image. All stills are preloaded as GPU textures before playback is enabled.
+
+Pace still controls the shared timeline. The amplitude slider is labelled Other faces: the five image-driven faces retain their authored small amplitudes. The other sixteen faces keep their previous geometric motion, with tooth/tongue shading removed to match the toothless artwork direction. No audio/model behavior changes. Static serving explicitly allows only the named PNG files in the five active libraries and recovered red-eyes-first11 collection. Restart Start.command once after adding the first11 routes, then refresh the browser.
+
+Each face has its own asymmetric character. The central face stays tense and rigid. The red-eye-shadow face retains the current set (revision 6) and now randomly selects between it and the recovered first eleven generated images in `assets/red-eyes-first11`. Each phoneme cue chooses the current set with 70% probability and the first11 set with 30%; Wide (EE), original EH, OO and L each have two candidates splitting that 30% equally (15% each). Selection remains fixed for the entire cue, even across redraws or guide toggles, and resamples for a new cue even when its shape repeats. Lip guides follow the selected still. Rest and Stop always use the original portrait. The other red-face backup collections were moved to macOS Trash at the user’s request. The brown and small-left faces keep their existing libraries.
+
+Image passes discard pixels outside their individual head masks, so overlapping crop rectangles cannot overwrite a previously rendered face. The static ground and cast shadows always come from the main photograph.
+
+The fourth face (small-left, the small hooded head nearest the central face) uses subtle slipping lip layers, tiny asymmetric openings and mostly unchanged sleepy eyelids. Its inset mask leaves the hood, tie, neck and ground static. Its native 512px crop is authored as 1024px sprites; sourceScale=0.5 maps both the head clipping and lip guides back to the photograph.
+
+The portrait includes a bottom-centered `#bc0d0d` current-word caption. It follows the same phoneme word events as mouth playback, shows only the active word (without surrounding punctuation), and clears during silence, stop and completion. Mandarin uses the pronunciation engine’s character/word grouping. Fullscreen positioning accounts for letterboxing.
+
+The historical `red-eyes-first11` folder now contains 12 stills: the original eleven plus `12-wide-expression.png` from the later restrained set. For Wide the two collection images each have 15% probability, and the current set’s Wide has 70%.
+
+In-image subtitles match the user's Asset 44.png design. Font: local Adobe Myriad Pro Regular, embedded in listening.css for offline loading. Approximate reference font size: 75px at 4608px image width (1.628%). Box for “variations”: approximately 420 x 118px (9.115% width, 4.552% height), centered horizontally, bottom inset 194px (7.485% height). Pure black at 40% opacity; text sampled from the supplied design is #e6e6e6. Horizontal padding is 57.5px per side and the box grows/shrinks with each word. All dimensions follow the displayed image in normal/fullscreen modes, including letterboxing. No subtitle or box remains during silence/stop. The source export has a one-pixel right/bottom edge (4609 x 2593); measurement uses the original photo's 4608 x 2592 coordinate space. Chinese falls back to PingFang SC.
+
+The fifth image-driven face is lower-hood, the small black/silver painted face below-right of face four. It uses all thirteen generated pose images plus original rest in assets/lower-hood-visemes-v1, with more pronounced and diverse lip folds and unequal eyelid tension. Native crop (1792,1760,512,512), 1024px sprites, sourceScale 0.5. Its fixed face mask leaves hood, neck and soil untouched. Existing first four libraries, red-face probabilities and subtitles are preserved. Restart Start.command after adding this library route.
+
+Fifth-face variant probabilities: EE/Wide, AH and OH each choose between two corresponding stills at 50/50; F/V has three corresponding stills, each at 1/3. The selected still is stable for the cue and lip guides use its own anchors. All other face probabilities are unchanged.

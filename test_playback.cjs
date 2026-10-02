@@ -42,22 +42,24 @@ run('draw=()=>{};state.ready=true;');
    run(`frame(${1000+(cue.start+cue.end)*500})`);
    assert.equal(get('readout').children.findIndex(e=>e.classList.current),cue.word);
    assert.equal(run('lastCue'),index);
-   const subtitle=scaled.words.map(word=>word.text).join('').trim();
+   const subtitle='Output: '+scaled.words.map(word=>word.text).join('').trim();
    assert.equal(get('word-subtitle').textContent,subtitle,'full caption stays visible during every cue including pauses');
    assert.equal(run('state.pose'),cue.shape,'image pose must switch directly to the active cue');
+   assert.equal(run('window.afterimageMotion.snapshot().pose'),cue.shape);
+   assert.equal(run('window.afterimageMotion.snapshot().pace'),.17);
    assert.equal(run('state.poseRevision'),++revision,'each cue requests one image selection');
    run(`frame(${1000+(cue.start+cue.end)*500})`);assert.equal(run('state.poseRevision'),revision,'same cue frame must not resample');checked++;
   }
   run(`frame(${1000+scaled.duration*1000+10})`);
   assert.equal(run('state.playing'),false);
-  assert.equal(get('word-subtitle').textContent,'','finished caption clears');
+  assert.equal(get('word-subtitle').textContent,'Output:','finished caption clears');
   assert.equal(run('state.pose'),'X');
   assert.equal(get('readout').children.some(e=>e.classList.current),false);
  }
  currentPlan=plans[0];await run('window.afterimageMotion.echo("Make a face.")');
  assert.equal(sent.at(-1).text,'Make a face.');
  assert.equal(await run('window.afterimageMotion.echo("later transcript")'),false);
- assert.equal(get('text').value,'Make a face.');run('stop()');assert.equal(run('state.pose'),'X');assert.equal(get('word-subtitle').textContent,'');
+ assert.equal(get('text').value,'Make a face.');run('stop()');assert.equal(run('state.pose'),'X');assert.equal(get('word-subtitle').textContent,'Output:');
  let release;pending=new Promise(resolve=>{release=resolve;});
  const loading=run('play()');run('stop()');
  release({ok:true,json:async()=>plans[0]});await loading;

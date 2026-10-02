@@ -8,6 +8,7 @@ import queue
 import re
 import subprocess
 import threading
+import tempfile
 import time
 
 SCHEMA = {'type': 'object', 'properties': {
@@ -140,6 +141,43 @@ class LocalAgent:
         if not path.is_relative_to(self.archive.root.resolve()) or not path.is_file() or path.suffix != '.wav':
             raise ValueError('Archived recording is missing or invalid.')
         return str(path)
+
+    def observe(self, audio):
+        """Ephemeral environmental description: no archive, pairing, or training writes."""
+        from audio_runtime import audio_features
+        features = audio_features(audio)
+        if not self.lock.acquire(blocking=False):
+            return {'busy': True, 'error': 'Audio model is processing the previous observation.'}
+        try:
+            self.busy = True
+            if self.state != 'ready':
+                raise RuntimeError(self.error or 'Audio model is not ready.')
+            began = time.monotonic()
+            # A bounded temporary file exists only for this inference and is removed afterwards.
+            with tempfile.TemporaryDirectory(prefix='afterimage-observation-') as folder:
+                path = Path(folder) / 'room.wav'
+                path.write_bytes(audio)
+                response = self.request({'system': self.prompt,
+                    'prompt': json.dumps({'response_language': 'en', 'previous_generated_replies': [], 'brief_observation': True}),
+                    'audio_path': str(path), 'max_tokens': self.config['observation_num_predict'],
+                    'temperature': self.config['temperature']})
+            # A short fragment at the generation cap is valid for display.
+            # Do not discard it or append an ellipsis when the token budget is reached.
+            generated = json.loads(response['text'])
+            self.validate(generated, 'en')
+            return {'text': generated['text'], 'silent': not generated['respond'],
+                    'processing_seconds': round(time.monotonic() - began, 2), 'features': features,
+                    'training': False, 'archived': False, 'transcription': False,
+                    'model': self.config['model']}
+        except RuntimeError as error:
+            # A malformed generated sentence is recoverable on the next audio clip.
+            # Only a dead/timed-out worker requires a model restart.
+            if not self.process or self.process.poll() is not None:
+                self.state, self.error = 'error', str(error)
+            raise
+        finally:
+            self.busy = False
+            self.lock.release()
 
     def decide(self, event, threshold=None):
         threshold = self.config['threshold'] if threshold is None else threshold

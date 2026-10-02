@@ -1,0 +1,13 @@
+{
+  "model": "Qwen2.5-0.5B \u00b7 LoRA 180",
+  "model_path": "models/qwen2.5-0.5b-base-4bit",
+  "adapter_path": "models/residue-qwen05-step180",
+  "adapter_sha256": "b41fe366c20097cb42987f593865058abaa3f6fd5586aef4da871547011e24a9",
+  "prefix": "The",
+  "temperature": 0.9,
+  "top_p": 0.95,
+  "context_tokens": 2048,
+  "chunk_min_tokens": 24,
+  "chunk_max_tokens": 64,
+  "chunk_soft_tokens": 36
+}

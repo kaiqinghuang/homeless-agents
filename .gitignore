@@ -59,6 +59,7 @@ ggml-*.bin
 0.2/
 0.3/
 0.4/
+0.5/
 assets/
 
 # Local audio learning experiments and adapters

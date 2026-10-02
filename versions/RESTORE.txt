@@ -1,0 +1,6 @@
+Saved visual versions
+
+Version 1: v1 contains the exact approved background, all face artwork, source files and settings.
+Version 2: v2 contains the new background, source files and settings. Shared face artwork is stored in v1/assets and is unchanged.
+
+These are restoration snapshots, not separate installations. Models, Python environments and runtime logs stay at the project root. To restore a visual version, stop the app, restore that version's index.html, app.js, listening.css and assets/portrait.png to the project root, then reload the page. If shared face artwork has since changed, restore the saved v1/assets artwork first, followed by the chosen background. Do not overwrite runtime data or models.

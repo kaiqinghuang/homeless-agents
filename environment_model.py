@@ -56,6 +56,8 @@ def load_audio_model(system=None):
         audio = '\n'.join(f'Audio {i}: <|audio_bos|>' + '<|AUDIO|>' * length + '<|audio_eos|>' for i, length in enumerate(lengths, 1))
         history = context.get('previous_generated_replies', [])[-4:]
         content = audio + '\nRespond to this sound environment.'
+        if context.get('brief_observation') is True:
+            content += '\nUse one very short English phrase, ideally 3 to 7 words. Finish within 14 tokens. No preamble, explanation, or ellipsis.'
         if history:
             content += '\nPrevious outputs (observations only): ' + json.dumps(history)
         messages = [{'role':'system','content':model.environment_system},{'role':'user','content':content}]
