@@ -62,20 +62,31 @@ class AgentTests(unittest.TestCase):
         self.assertEqual(result['reason'], 'environment_interval')
 
     def test_errors_are_not_reported_as_silence(self):
-        for output in [self.output('English only.'), {'text': 'not JSON'},
+        for output in [self.output('中文'), {'text': 'not JSON'},
                        {**self.output(), 'truncated': True}]:
             self.agent.request.return_value = output
-            result = self.agent.decide(self.event(text='你好', language='zh'))
+            result = self.agent.decide(self.event(text='room', language='en'))
             self.assertEqual(result['action'], 'error')
             self.assertEqual(result['text'], '')
 
-    def test_chinese_language_and_test_isolation(self):
-        self.agent.request.return_value = self.output('我在这里。')
-        result = self.agent.decide(self.event(kind='text_input', source='text-test', text='你好吗？', language_mode='zh'))
-        self.assertEqual(result['language'], 'zh')
+    def test_english_test_isolation(self):
+        result = self.agent.decide(self.event(kind='text_input', source='text-test', text='room', language_mode='en'))
+        self.assertEqual(result['language'], 'en')
         self.assertEqual(result['action'], 'speak')
         self.assertEqual(self.archive.agent_memory('test-room'), [])
-        self.assertEqual(self.archive.recent(), [])
+        self.assertFalse((self.archive.root / 'environment-pairs.jsonl').exists())
+
+    def test_environment_response_creates_audio_target_pair(self):
+        self.agent.request.return_value = self.output('footsteps, footsteps', score=1)
+        event = self.event(kind='audio', source='ambient', text='')
+        result = self.agent.decide(event)
+        pair = json.loads((self.archive.root / 'environment-pairs.jsonl').read_text())
+        self.assertEqual(pair['target'], result['text'])
+        self.assertEqual(pair['audio'], event['audio'])
+        self.assertEqual(pair['decision_id'], result['id'])
+        self.assertEqual(pair['context']['response_language'], 'en')
+        self.agent.decide(event)
+        self.assertEqual(len((self.archive.root / 'environment-pairs.jsonl').read_text().splitlines()), 1)
 
     def test_busy_and_validation(self):
         with self.agent.lock:
@@ -120,25 +131,20 @@ class DirectAudioTests(AgentTests):
         self.assertEqual(result['input_representation'], 'audio_embeddings')
         self.assertFalse(result['transcription'])
 
-    def test_fixed_chinese_response_without_transcript(self):
-        self.agent.request.return_value = self.output('我在这里。')
-        result = self.agent.decide(self.event(kind='audio', text='', language_mode='zh'))
-        self.assertEqual((result['action'], result['language']), ('speak', 'zh'))
+    def test_nonenglish_modes_are_rejected(self):
+        for language in ('zh', 'mix', 'auto'):
+            with self.assertRaises(ValueError):
+                self.agent.decide(self.event(language_mode=language))
+        self.agent.request.assert_not_called()
+        self.assertFalse(self.agent.busy)
 
-    def test_language_modes_do_not_share_history(self):
-        self.agent.request.return_value = self.output('我在这里。')
-        self.agent.decide(self.event(language_mode='zh'))
-        self.agent.last_reply = -float('inf')
-        self.agent.request.return_value = self.output('Hello.')
-        self.agent.decide(self.event(language_mode='en'))
+    def test_old_chinese_history_is_not_reused(self):
+        source = self.event()
+        self.archive.save({'kind':'decision','source_id':source['id'],'session':'test-room',
+            'source':'candidate','action':'speak','text':'你好','language':'zh','prompt_version':self.agent.prompt_hash})
+        self.agent.decide(self.event())
         context = json.loads(self.agent.request.call_args.args[0]['prompt'])
-        self.assertEqual(context['response_language'], 'en')
         self.assertEqual(context['previous_generated_replies'], [])
-        self.agent.last_reply = -float('inf')
-        self.agent.request.return_value = self.output('你好。')
-        self.agent.decide(self.event(language_mode='zh'))
-        context = json.loads(self.agent.request.call_args.args[0]['prompt'])
-        self.assertEqual(context['previous_generated_replies'], ['我在这里。'])
 
     def test_fixed_mode_overrides_text_script_and_rejects_wrong_reply(self):
         result = self.agent.decide(self.event(source='text-test', kind='text_input',

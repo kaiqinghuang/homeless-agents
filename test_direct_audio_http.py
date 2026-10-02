@@ -55,7 +55,7 @@ class DirectAudioHTTPTests(unittest.TestCase):
                 self.assertEqual(event['text'], '')
                 self.assertFalse(event['transcription'])
                 self.assertEqual((archive.root / event['audio']).read_bytes(), pcm)
-                for invalid in ('auto', 'mix'):
+                for invalid in ('auto', 'mix', 'zh'):
                     with self.assertRaises(urllib.error.HTTPError) as rejected:
                         post('/api/audio?language=' + invalid, pcm, 'audio/wav')
                     self.assertEqual(rejected.exception.code, 400)
@@ -67,7 +67,7 @@ class DirectAudioHTTPTests(unittest.TestCase):
                 self.assertEqual(mouth['method'], 'phonemes-v1')
                 self.assertTrue(mouth['timeline'])
                 with urllib.request.urlopen(url + '/api/status') as response:
-                    self.assertEqual(json.load(response)['stage'], 4)
+                    self.assertEqual(json.load(response)['stage'], 5)
                 with self.assertRaises(urllib.error.HTTPError) as denied:
                     urllib.request.urlopen(url + '/data/' + event['audio'])
                 self.assertEqual(denied.exception.code, 404)

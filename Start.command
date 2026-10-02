@@ -5,10 +5,10 @@ if ! command -v python3 >/dev/null 2>&1; then
   read '?Press Enter to close.'
   exit 1
 fi
-print 'Afterimage · local listening and autonomous responses'
+print 'Afterimage · continuous text and silent faces'
 print 'Open http://127.0.0.1:8766 in Safari or Chrome once the server is ready.'
-print 'Use Start listening in the page to enable the microphone.'
-print 'Direct audio uses local Qwen2-Audio via MLX. First load may take a minute.'
+print 'Use Start generating in the page. The microphone stays off.'
+print 'Text uses Qwen2.5-0.5B with the saved 180-step LoRA.'
 print 'Keep this window open. Press Control-C to stop.'
 python3 server.py --port 8766
 read '?Press Enter to close.'

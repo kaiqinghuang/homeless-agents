@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local listening with phoneme-driven, silent mouth animation."""
+"""Local continuous text with phoneme-driven, silent mouth animation."""
 import argparse
 import json
 import math
@@ -9,11 +9,13 @@ from urllib.parse import urlsplit, parse_qs
 from audio_runtime import AudioArchive, audio_features
 from mouth_plan import plan
 from agent_runtime import LocalAgent
+from residue_runtime import ResidueGenerator
+from residue_plan import residue_plan
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-STATIC_PATHS = {'/', '/index.html', '/app.js', '/agent.js', '/listening.js', '/audio-capture.js', '/listening.css', '/assets/portrait.png'}
+STATIC_PATHS = {'/', '/index.html', '/app.js', '/residue.js', '/agent.js', '/listening.js', '/audio-capture.js', '/listening.css', '/assets/portrait.png'}
 STATIC_PATHS.update('/assets/' + folder + '/' + name + '.png'
     for folder in ('central-visemes-v1', 'red-eyes-visemes-v1', 'brown-face-visemes-v1', 'small-left-visemes-v1', 'lower-hood-visemes-v1', 'clay-lower-visemes-v1', 'left-profile-visemes-v1', 'upper-left-visemes-v1', 'right-large-visemes-v1', 'white-upper-visemes-v1', 'tiny-right-visemes-v1', 'ruffle-right-visemes-v1', 'upper-right-visemes-v1', 'wrapped-visemes-v1', 'far-right-visemes-v1', 'wig-left-visemes-v1', 'lower-left-visemes-v1', 'far-upper-left-visemes-v1', 'wicker-left-visemes-v1', 'far-left-visemes-v1', 'top-black-visemes-v1')
     for name in ('00-rest', '01-pressed', '02-wide', '03-parted', '04-open', '05-oh', '06-oo', '07-fold', '08-skew'))
@@ -60,8 +62,10 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         path = urlsplit(self.path).path
-        if path == '/api/status':
-            self.respond({'stage': 4, 'engine': self.server.agent.status(), 'agent': self.server.agent.status(), 'archive': self.server.archive.today()})
+        if path == '/api/residue/status':
+            self.respond(self.server.residue.status())
+        elif path == '/api/status':
+            self.respond({'stage': 5, 'engine': self.server.agent.status(), 'agent': self.server.agent.status(), 'archive': self.server.archive.today()})
         elif path == '/api/events':
             self.respond({'events': self.server.archive.recent()})
         elif path == '/api/decisions':
@@ -83,7 +87,7 @@ class Handler(SimpleHTTPRequestHandler):
         if origin and urlsplit(origin).netloc != self.headers.get('Host'):
             self.respond({'error': 'Only the local app can submit recordings.'}, 403)
             return
-        if parsed.path not in ('/api/plan', '/api/audio', '/api/room', '/api/engine/start', '/api/agent/start', '/api/agent/decide', '/api/agent/test'):
+        if parsed.path not in ('/api/residue/start', '/api/residue/next', '/api/residue/stop', '/api/plan', '/api/audio', '/api/room', '/api/engine/start', '/api/agent/start', '/api/agent/decide', '/api/agent/test'):
             self.send_error(404)
             return
         try:
@@ -98,10 +102,16 @@ class Handler(SimpleHTTPRequestHandler):
             data = json.loads(payload)
             if not isinstance(data, dict):
                 raise ValueError('Expected an object.')
-            if parsed.path == '/api/plan':
+            if parsed.path == '/api/residue/start':
+                result = self.server.residue.start()
+            elif parsed.path == '/api/residue/next':
+                result = self.server.residue.next(data.get('session'))
+            elif parsed.path == '/api/residue/stop':
+                result = self.server.residue.stop(data.get('session'))
+            elif parsed.path == '/api/plan':
                 if not isinstance(data.get('text'), str):
                     raise ValueError('Text is required.')
-                result = plan(data['text'], data.get('speed', 1))
+                result = (residue_plan if data.get('mode') == 'residue' else plan)(data['text'], data.get('speed', 1))
             elif parsed.path == '/api/engine/start':
                 self.server.agent.start()
                 result = self.server.agent.status()
@@ -114,8 +124,8 @@ class Handler(SimpleHTTPRequestHandler):
                     if not isinstance(phrase, str) or not 1 <= len(phrase.strip()) <= 500:
                         raise ValueError('Enter a test message of 1–500 characters.')
                     language = data.get('language', 'en')
-                    if language not in ('en', 'zh'):
-                        raise ValueError('Choose English or 中文.')
+                    if language != 'en':
+                        raise ValueError('Environment mode uses English only.')
                     event = self.server.archive.save({'language_mode': language, 'kind': 'text_input', 'source': 'text-test',
                                                      'text': phrase.strip(), 'session': 'text-test'})
                 else:
@@ -144,7 +154,7 @@ class Handler(SimpleHTTPRequestHandler):
     def handle_audio(self, payload, query):
         language = query.get('language', ['en'])[0]
         source = query.get('source', ['candidate'])[0]
-        if language not in ('en', 'zh') or source not in ('candidate', 'ambient', 'file'):
+        if language != 'en' or source not in ('candidate', 'ambient', 'file'):
             raise ValueError('Unsupported language or audio source.')
         features = audio_features(payload)
         # Archive the waveform directly; no ASR, VAD or sound-to-text conversion.
@@ -166,10 +176,10 @@ if __name__ == '__main__':
         raise SystemExit(f'Cannot start on port {args.port}: {error}. Close the previous app terminal and try again.')
     server.archive = AudioArchive(args.data_dir)
     server.agent = LocalAgent(ROOT, server.archive)
-    server.agent.start()
+    server.residue = ResidueGenerator(ROOT, args.data_dir / 'residue')
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
-    print(f'Afterimage · Listening: http://127.0.0.1:{server.server_port}', flush=True)
-    print('Microphone starts only when you click Start listening. Archive: ' + str(args.data_dir), flush=True)
+    print(f'Afterimage · Continuous text: http://127.0.0.1:{server.server_port}', flush=True)
+    print('Click Start generating. Microphone stays off. Text logs: ' + str(args.data_dir / 'residue'), flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -177,3 +187,4 @@ if __name__ == '__main__':
     finally:
         server.server_close()
         server.agent.close()
+        server.residue.close()

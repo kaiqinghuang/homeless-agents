@@ -68,7 +68,7 @@
    pump();
   }
  };
- el('response-mode').addEventListener('change',()=>{stop();note(mode()==='ai'?'Listening for a reason to respond / 等待值得回应的声音':'Collecting only / 只收集，不回应');});
+ el('response-mode').addEventListener('change',()=>{stop();note(mode()==='ai'?'Listening to the room / 聆听环境':'Collecting only / 只收集，不回应');});
  el('response-threshold').addEventListener('input',()=>{el('threshold-value').textContent=threshold().toFixed(2);});
  el('agent-cancel').addEventListener('click',stop);
  el('agent-test').addEventListener('click',()=>{

@@ -4,8 +4,10 @@
   "revision": "c65570002626f41b4dc08b7b54f42f99f3e82e7f",
   "backend": "mlx_audio",
   "threshold": 0.6,
-  "cooldown_seconds": 12,
-  "environment_interval_seconds": 45,
-  "temperature": 0.2,
-  "num_predict": 180
+  "cooldown_seconds": 2,
+  "environment_interval_seconds": 8,
+  "temperature": 0.8,
+  "num_predict": 48,
+  "mode": "environment-en-v1",
+  "adapter_path": "training/gallery-drift-20260929/adapter"
 }

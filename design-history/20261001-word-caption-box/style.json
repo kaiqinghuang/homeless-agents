@@ -1,0 +1,20 @@
+{
+  "description": "Previous word-by-word subtitle with translucent black background; exact source preserved alongside this file.",
+  "font": "Artwork Myriad Pro / Myriad Pro",
+  "color": "#e6e6e6",
+  "reference_image": [
+    4608,
+    2592
+  ],
+  "font_size": 75,
+  "font_weight": 400,
+  "box_height": 118,
+  "horizontal_padding": 57.5,
+  "bottom_inset": 194,
+  "background": "rgba(0,0,0,.48)",
+  "css": [
+    ".word-subtitle{--caption-unit:calc(100cqw / 4608);position:absolute;left:50%;bottom:calc(194 * var(--caption-unit));transform:translateX(-50%);z-index:1;display:flex;align-items:center;justify-content:center;width:max-content;max-width:90%;height:calc(118 * var(--caption-unit));padding:0 calc(57.5 * var(--caption-unit));background:rgba(0,0,0,.48);color:#e6e6e6;text-align:center;font-family:\"Artwork Myriad Pro\",\"Myriad Pro\",\"PingFang SC\",sans-serif;font-size:calc(75 * var(--caption-unit));font-style:normal;font-weight:400;line-height:1;letter-spacing:normal;pointer-events:none;white-space:nowrap;text-shadow:none;border-radius:0}",
+    ".word-subtitle:empty{display:none}",
+    ".stage:fullscreen .word-subtitle{--caption-unit:calc(min(100vw,177.777778vh) / 4608);bottom:calc(max(0px,(100vh - 56.25vw)/2) + 194 * var(--caption-unit))}"
+  ]
+}

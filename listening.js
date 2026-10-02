@@ -4,8 +4,7 @@
  const session={active:false,starting:false,stream:null,context:null,node:null,analyser:null,ring:[],ringSeconds:0,clip:null,
    elapsed:0,lastAbove:0,clipStart:0,floor:-65,lastRoom:0,lastAmbient:0,lastMeter:0,queue:[],busy:false,controller:null,
    generation:0,id:'',ready:false,events:[],statusTimer:null};
- const languagePreferenceKey='afterimage.language.fixed.v1';
- try{const saved=localStorage.getItem(languagePreferenceKey);el('speech-language').value=saved==='zh'?'zh':'en';}catch(error){el('speech-language').value='en';}
+ el('speech-language').value='en';
  let room={rms_dbfs:-100,peak_dbfs:-100,brightness_hz:0};
  let pollErrors=0;
  const inputPreferenceKey='afterimage.microphone.v1';
@@ -27,8 +26,8 @@
    const response=await fetch('/api/status');
    if(!response.ok)throw Error('Restart Start.command once to enable the new listening service.');
    const data=await response.json();
-   if(data.stage!==4)throw Error('Restart Start.command to load direct audio.');
-   if(data.agent?.language_modes?.join(',')!=='en,zh')throw Error('Restart Start.command to enable separate language modes. / 请重启以启用独立语言模式。');
+   if(data.stage!==5)throw Error('Restart Start.command to load English environment mode.');
+   if(data.agent?.language_modes?.join(',')!=='en')throw Error('Restart Start.command to enable English environment mode. / 请重启以启用英文环境模式。');
    window.afterimageAgent?.status(data.agent);
    session.ready=data.engine.state==='ready';
    text('engine-state',session.ready?'Direct audio · MLX · 直接听声音':data.engine.state==='loading'?'Loading local audio model…':data.engine.error||'Audio model unavailable');
@@ -133,22 +132,10 @@
   const level=db(Math.sqrt(power/block.length));room.rms_dbfs=level;room.peak_dbfs=db(peak);
   session.ring.push(block);session.ringSeconds+=seconds;
   while(session.ringSeconds>6.5&&session.ring.length>1){session.ringSeconds-=session.ring.shift().length/rate;}
-  if(session.elapsed<1.3)session.floor=Math.max(-80,Math.min(-25,session.floor*.65+level*.35));
-  else if(!session.clip)session.floor=session.floor*.985+Math.min(level,session.floor+3)*.015;
-  const threshold=Math.max(-55,Math.min(-28,session.floor+9));
-  const above=level>threshold;
-  if(session.clip){
-   session.clip.push(block);if(above)session.lastAbove=session.elapsed;
-   if(session.elapsed-session.lastAbove>.8||session.elapsed-session.clipStart>=10){
-    enqueue(session.clip,'candidate',rate);session.clip=null;session.lastAmbient=session.elapsed;
-   }
-  }else if(session.elapsed>1.3&&above){
-   session.clip=tail(.45);session.clipStart=session.elapsed-.45;session.lastAbove=session.elapsed;
-  }
-  if(!session.clip&&session.elapsed-session.lastAmbient>=20&&session.ringSeconds>=4){
-   if(!session.busy&&!session.queue.length)enqueue(tail(5),'ambient',rate);
-   session.lastAmbient=session.elapsed;
-  }
+  // Contiguous room windows; no speech/activity trigger and no quiet-room sampling gaps.
+  if(!session.clip){session.clip=[];session.clipStart=session.elapsed-seconds;}
+  session.clip.push(block);
+  if(session.elapsed-session.clipStart>=8){enqueue(session.clip,'ambient',rate);session.clip=null;}
   if(session.elapsed-session.lastMeter>.2){
    session.lastMeter=session.elapsed;el('input-level').value=level;text('level-value',level.toFixed(0)+' dBFS');
    status(session.elapsed<1.3?'Calibrating room… / 测量背景声':session.clip?'Sound activity · 声音活动':'Listening · 正在聆听');
@@ -197,17 +184,6 @@
   const context=session.context;session.context=null;if(context&&context.state!=='closed')await context.close();
   el('recording-dot').hidden=true;el('input-level').value=-100;text('level-value','— dBFS');status('Microphone off / 麦克风已关闭');text('active-input','Active input / 正在使用：—');text('recognition-state','');buttons();
  }
- el('speech-language').addEventListener('change',()=>{
-  const language=el('speech-language').value;
-  try{localStorage.setItem(languagePreferenceKey,language);}catch(error){}
-  window.afterimageAgent?.stop();
-  // Discard old-language audio, uploads and pending replies at the boundary.
-  session.generation++;session.queue=[];session.controller?.abort();
-  session.clip=null;session.ring=[];session.ringSeconds=0;session.lastAmbient=session.elapsed;
-  session.id=crypto.randomUUID();
-  el('agent-reply').textContent='—';
-  text('recognition-state',language==='en'?'English mode':'中文模式');
- });
  el('microphone').addEventListener('change',()=>{
   inputPreference=el('microphone').value;
   try{localStorage.setItem(inputPreferenceKey,inputPreference);}catch(error){}

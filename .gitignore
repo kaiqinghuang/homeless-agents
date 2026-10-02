@@ -60,3 +60,15 @@ ggml-*.bin
 0.3/
 0.4/
 assets/
+
+# Local audio learning experiments and adapters
+training/
+
+# Local web-corpus mining dumps (CommonCrawl HTML, texts, manifests)
+research/
+
+# Adapter / feature-cache files if they land outside models/ or training/
+*.safetensors
+*.npz
+*.npy
+*.tmp

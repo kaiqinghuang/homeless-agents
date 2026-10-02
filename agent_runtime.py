@@ -1,4 +1,4 @@
-"""Direct local audio decisions. No ASR, cloud calls, or training."""
+"""Direct local audio decisions. English environmental responses with an optional trained audio-conditioned adapter."""
 import hashlib
 import json
 import math
@@ -19,8 +19,8 @@ SCHEMA = {'type': 'object', 'properties': {
 
 def response_language(event):
     language = event.get('language_mode', 'en')
-    if language not in ('en', 'zh'):
-        raise ValueError('Choose English or 中文; automatic language mode is no longer supported.')
+    if language != 'en':
+        raise ValueError('Environment mode uses English only.')
     return language
 
 
@@ -41,6 +41,9 @@ class LocalAgent:
     def start(self, restart=False):
         with self.start_lock:
             if restart and not self.busy and self.state != 'loading':
+                self.config = json.loads((self.root / 'agent_config.json').read_text())
+                self.prompt = (self.root / 'agent_prompt.txt').read_text()
+                self.prompt_hash = hashlib.sha256(self.prompt.encode()).hexdigest()[:16]
                 self.state = 'idle'
             if self.closed or self.state in ('loading', 'ready'):
                 return
@@ -97,6 +100,7 @@ class LocalAgent:
             if not ready.get('ready'):
                 raise RuntimeError(ready.get('error', 'Audio model failed to load.'))
             if not self.closed:
+                self.digest = ready.get('digest', self.config['revision'])
                 self.state = 'ready'
         except Exception as error:
             self.state = 'error'
@@ -113,7 +117,8 @@ class LocalAgent:
                 'backend': 'MLX · Metal', 'input': 'direct_audio', 'transcription': False,
                 'busy': self.busy, 'local': True, 'training': False,
                 'threshold': self.config['threshold'], 'digest': self.digest,
-                'language_modes': ['en', 'zh'], 'default_language': 'en'}
+                'language_modes': ['en'], 'default_language': 'en',
+                'mode': self.config.get('mode'), 'adapter': self.config.get('adapter_path')}
 
     def request(self, payload):
         if not self.process or self.process.poll() is not None:
@@ -158,6 +163,7 @@ class LocalAgent:
                       'prompt_version': self.prompt_hash, 'threshold': threshold,
                       'language': language, 'text': '', 'salience': None,
                       'action': 'silent', 'decision_by': 'gate', 'training': False,
+                      'mode': self.config.get('mode'), 'adapter': self.config.get('adapter_path'),
                       'input_representation': 'text_test' if is_test else 'audio_embeddings', 'transcription': False}
             ambient = event.get('source') == 'ambient' or event['kind'] == 'environment'
             if event['kind'] == 'silence':
@@ -185,6 +191,9 @@ class LocalAgent:
                     response = self.request(payload)
                     if response.get('truncated'):
                         raise ValueError('Model response exceeded its token budget.')
+                    result['model_digest'] = response.get('digest', self.digest)
+                    result['raw_response'] = response.get('raw_response')
+                    result['model_context'] = context
                     raw = response['text'].strip()
                     result['raw_model_output'] = raw
                     if raw.startswith('```') and raw.endswith('```'):
@@ -208,7 +217,19 @@ class LocalAgent:
                     if isinstance(error, (OSError, RuntimeError)):
                         self.state, self.error = 'error', str(error)
             result['processing_seconds'] = round(time.monotonic() - began, 2)
-            return self.archive.save(result)
+            saved = self.archive.save(result)
+            if not is_test and saved['action'] == 'speak':
+                sample = {'schema': 1, 'source_id': event['id'], 'decision_id': saved['id'],
+                          'audio': event['audio'], 'audio_sha256': hashlib.sha256(Path(self.audio_path(event)).read_bytes()).hexdigest(), 'target': saved['text'], 'context': saved.get('model_context'),
+                          'model_digest': saved['model_digest'], 'prompt_hash': self.prompt_hash,
+                          'prompt': self.prompt, 'provenance': 'model-generated, not a human label',
+                          'created_at': saved['created_at']}
+                try:
+                    with (self.archive.root / 'environment-pairs.jsonl').open('a') as output:
+                        output.write(json.dumps(sample, ensure_ascii=False)+'\n')
+                except OSError as error:
+                    saved['sample_error'] = str(error)
+            return saved
         finally:
             self.busy = False
             self.lock.release()
