@@ -73,3 +73,12 @@ research/
 *.npz
 *.npy
 *.tmp
+
+# Local visual snapshots and large reference images
+design-history/**/*.png
+design-history/**/*.jpg
+design-history/**/*.jpeg
+versions/**/*.png
+versions/**/*.jpg
+versions/**/*.jpeg
+*.psd
