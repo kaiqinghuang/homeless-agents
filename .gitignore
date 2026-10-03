@@ -74,10 +74,14 @@ research/
 *.npy
 *.tmp
 
-# Local visual snapshots and large reference images
-design-history/**/*.png
-design-history/**/*.jpg
-design-history/**/*.jpeg
+# Local experiment snapshots and session-only collector output
+design-history/
+tmp/
+temp/
+.cache/
+*.lock
+
+# Version restore images (source snapshots stay tracked)
 versions/**/*.png
 versions/**/*.jpg
 versions/**/*.jpeg
