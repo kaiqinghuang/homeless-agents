@@ -19,8 +19,8 @@
 <div class="stage-head"><span class="eyebrow">The face / 面孔</span><div class="stage-actions"><button id="guides" aria-pressed="false" aria-controls="portrait guide-note">Guide points / 定位点</button><button id="zoom" aria-pressed="false">Inspect face</button><button id="fullscreen">Full screen</button></div></div>
 <div class="stage" id="stage"><canvas id="portrait" width="4608" height="2592" role="img" aria-label="All visible faces mouth the generated reply together; no audio is played."></canvas><div id="artwork-hud" class="artwork-hud">
 <div class="hud-model">
-<div class="hud-row" title="139 original records plus new temporary Common Crawl selections; not used for training.">Discarded Web Data <span id="hud-training-count">139</span></div>
-<div class="hud-sources" title="New Common Crawl source after each successful collection. No model training."><div id="hud-source-track" class="hud-source-track"></div></div>
+<div class="hud-row" title="139 training records; 16 additional records held out for validation.">Collecting Discarded Data <span id="hud-training-count">139</span></div>
+<div class="hud-sources" title="Existing training sources, replayed in order. No live web collection."><div id="hud-source-track" class="hud-source-track"></div></div>
 </div>
 <div id="word-subtitle" class="word-subtitle" aria-label="Current sentence subtitle" aria-live="off">Homeless Agent:</div>
 </div></div>
@@ -76,5 +76,5 @@
 <footer><span>Afterimage · Continuous text</span><span>Silent · Offline</span></footer>
 <script src="app.js?v=20261003-homeless-caption"></script>
 <script src="residue.js?v=20261003-noise-sampling"></script>
-<script src="artwork-overlay.js?v=20261003-live-collection"></script>
+<script src="artwork-overlay.js?v=20261003-minimal-six"></script>
 </body></html>

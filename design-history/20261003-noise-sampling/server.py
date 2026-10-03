@@ -12,7 +12,6 @@ from agent_runtime import LocalAgent
 from residue_runtime import ResidueGenerator
 from residue_plan import residue_plan
 from environment_monitor import EnvironmentMonitor
-from live_collection import LiveCollection
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -44,7 +43,7 @@ class Handler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(ROOT), **kwargs)
 
     def log_message(self, format, *args):
-        if urlsplit(self.path).path not in ('/api/status', '/api/room', '/api/collection/status'):
+        if urlsplit(self.path).path not in ('/api/status', '/api/room'):
             super().log_message(format, *args)
 
     def end_headers(self):
@@ -64,9 +63,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         path = urlsplit(self.path).path
-        if path == '/api/collection/status':
-            self.respond(self.server.collector.status())
-        elif path == '/api/environment/status':
+        if path == '/api/environment/status':
             self.respond(self.server.monitor.status())
         elif path == '/api/environment/devices':
             try:
@@ -108,9 +105,6 @@ class Handler(SimpleHTTPRequestHandler):
         if parsed.path not in ('/api/environment/start', '/api/environment/stop', '/api/environment/observe', '/api/residue/start', '/api/residue/next', '/api/residue/stop', '/api/plan', '/api/audio', '/api/room', '/api/engine/start', '/api/agent/start', '/api/agent/decide', '/api/agent/test'):
             self.send_error(404)
             return
-        if not self.server.audio_enabled and parsed.path in ('/api/environment/start', '/api/environment/observe', '/api/audio', '/api/room', '/api/engine/start', '/api/agent/start', '/api/agent/decide', '/api/agent/test'):
-            self.respond({'error': 'Audio is disabled in text-only mode.'}, 403)
-            return
         try:
             size = int(self.headers.get('Content-Length', '0'))
             maximum = 500000 if parsed.path in ('/api/audio', '/api/environment/observe') else 16000
@@ -131,7 +125,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not isinstance(data, dict):
                 raise ValueError('Expected an object.')
             if parsed.path == '/api/environment/start':
-                result = self.server.monitor.start(data.get('device', 'builtin'), data.get('session'), data.get('interpret', True))
+                result = self.server.monitor.start(data.get('device', 'builtin'), data.get('session'))
             elif parsed.path == '/api/environment/stop':
                 session = data.get('session')
                 if not isinstance(session, str) or not session:
@@ -140,7 +134,7 @@ class Handler(SimpleHTTPRequestHandler):
             elif parsed.path == '/api/residue/start':
                 result = self.server.residue.start()
             elif parsed.path == '/api/residue/next':
-                result = self.server.residue.next(data.get('session'), self.server.monitor.sample_now if self.server.audio_enabled else None)
+                result = self.server.residue.next(data.get('session'))
             elif parsed.path == '/api/residue/stop':
                 result = self.server.residue.stop(data.get('session'))
             elif parsed.path == '/api/plan':
@@ -213,18 +207,15 @@ if __name__ == '__main__':
     server.agent = LocalAgent(ROOT, server.archive)
     server.residue = ResidueGenerator(ROOT, args.data_dir / 'residue')
     server.monitor = EnvironmentMonitor(ROOT, server.agent)
-    server.audio_enabled = server.residue.config.get('audio_enabled', False)
-    server.collector = LiveCollection(ROOT)
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
     print(f'Afterimage · Continuous text: http://127.0.0.1:{server.server_port}', flush=True)
-    print('Click Start generating. Audio is disabled by default. Text logs: ' + str(args.data_dir / 'residue'), flush=True)
+    print('Click Start generating. Environment monitor displays audio observations without training. Text logs: ' + str(args.data_dir / 'residue'), flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
         server.server_close()
-        server.collector.close()
         server.monitor.close()
         server.agent.close()
         server.residue.close()

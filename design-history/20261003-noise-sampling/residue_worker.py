@@ -2,7 +2,6 @@
 import contextlib,hashlib,json,os,re,secrets,sys
 from pathlib import Path
 from residue_loop import LoopGuard
-from noise_sampling import validated_sampling
 ROOT=Path(__file__).resolve().parent
 protocol=sys.stdout
 def emit(value):
@@ -22,6 +21,7 @@ def main():
   cfg=json.loads((ROOT/'residue_config.json').read_text());ap=ROOT/cfg['adapter_path']
   if hashlib.sha256((ap/'adapters.safetensors').read_bytes()).hexdigest()!=cfg['adapter_sha256']:raise ValueError('Selected LoRA checksum changed.')
   model,tok=load(str(ROOT/cfg['model_path']),adapter_path=str(ap),tokenizer_config={'trust_remote_code':False});model.eval()
+  sampler=make_sampler(temp=cfg['temperature'],top_p=cfg['top_p'])
   # An installation continues until stopped. Exclude model end/control tokens,
   # without adding style instructions or synthetic sentences to its context.
   processors=make_logits_processors(logit_bias={i:-1e9 for i in tok.all_special_ids})
@@ -35,8 +35,6 @@ def main():
      context=tok.encode(cfg['prefix'],add_special_tokens=False)
      emit({'session':session,'seed':seed,'prefix':cfg['prefix']});continue
     if req['session']!=session:raise ValueError('Generation session expired.')
-    sampling=validated_sampling(req.get('sampling') or cfg)
-    sampler=make_sampler(temp=sampling['temperature'],top_p=sampling['top_p'])
     ids=[];text=''
     for token,_ in generate_step(mx.array(context[-cfg['context_tokens']:]),model,max_tokens=cfg['chunk_max_tokens'],sampler=sampler,logits_processors=processors):
      ids.append(int(token));text=tok.decode(pending+ids,skip_special_tokens=True)
@@ -53,7 +51,7 @@ def main():
      # Keep brief repetitions visible, but stop feeding a loop back into itself.
      context=tok.encode(cfg['prefix'],add_special_tokens=False);pending=[]
     sequence+=1
-    emit({'session':session,'sequence':sequence,'text':text,'tokens':len(ids),'context_tokens':len(context),'recovery':recovery,'sampling':sampling})
+    emit({'session':session,'sequence':sequence,'text':text,'tokens':len(ids),'context_tokens':len(context),'recovery':recovery})
     mx.clear_cache()
    except Exception as e:emit({'error':str(e)})
 if __name__=='__main__':

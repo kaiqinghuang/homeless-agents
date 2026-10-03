@@ -289,6 +289,12 @@ class LocalAgent:
         elif reply.strip():
             raise ValueError('A silent decision must have an empty reply.')
 
+    def unload(self):
+        # Wait for an in-flight observation, then release the audio model memory.
+        with self.lock:
+            with self.start_lock:
+                self._terminate();self.process=None;self.state='idle';self.error=''
+
     def close(self):
         with self.start_lock:
             self.closed = True

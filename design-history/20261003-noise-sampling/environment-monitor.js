@@ -5,18 +5,17 @@
  const session=crypto.randomUUID();
  try{preference=localStorage.getItem(key)||'builtin';}catch(e){}
  const caption=text=>{el('hud-recording').textContent='Noise Recording: '+text;};
- function buttons(){el('monitor-toggle').textContent=active||starting?'Stop listening':'Start listening';el('monitor-input').disabled=active||starting;el('monitor-interpret').disabled=active||starting;}
+ function buttons(){el('monitor-toggle').textContent=active||starting?'Stop listening':'Start listening';el('monitor-input').disabled=active||starting;}
  async function post(action,data={}){
   const r=await fetch('/api/environment/'+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
   const value=await r.json();if(!r.ok)throw Error(value.error||'Audio monitor unavailable');return value;
  }
  function render(s){
   active=s.active;buttons();
-  if(s.active&&!s.interpret)caption(s.state==='capturing'?'Sampling…':'Waiting for next segment…');
-  else if(s.text)caption(s.text);
+  if(s.text)caption(s.text);
   else if(s.error)caption('Waiting for an audio observation…');
-  else caption({off:'Off',starting:'Starting microphone…',loading:'Loading local audio model…',listening:'Listening…',waiting:'Waiting for next segment…',capturing:'Sampling…'}[s.state]||'Listening…');
-  el('monitor-device').textContent=[s.device,s.active?'2-second measurement per segment'+(s.interpret?' · descriptions every 8 seconds':' · audio model off'):'',s.error].filter(Boolean).join(' · ')||'Audio observations · display only';
+  else caption({off:'Off',starting:'Starting microphone…',loading:'Loading local audio model…',listening:'Listening…'}[s.state]||'Listening…');
+  el('monitor-device').textContent=[s.device,s.error].filter(Boolean).join(' · ')||'Audio observations · display only';
   el('hud-recording').dataset.observations=s.observations;
   el('hud-recording').dataset.captured=s.captured;
   el('hud-recording').dataset.rms=s.features?.rms_dbfs??'';
@@ -28,7 +27,7 @@
  }
  async function start(){
   if(starting||active)return;const ticket=++revision;clearTimeout(pollTimer);starting=true;buttons();caption('Starting microphone…');
-  try{const s=await post('start',{device:preference,session,interpret:el('monitor-interpret').checked});if(ticket===revision){render(s);poll(ticket);}}
+  try{const s=await post('start',{device:preference,session});if(ticket===revision){render(s);poll(ticket);}}
   catch(e){if(ticket===revision)caption(e.message);}
   finally{if(ticket===revision){starting=false;buttons();}}
  }

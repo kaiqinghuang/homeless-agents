@@ -1,44 +1,38 @@
 'use strict';
 (()=>{
- const el=id=>document.getElementById(id),sourceInterval=8000;
- let sources=[],cursor=0,timer=null,transitionTimer=null;
- const track=el('hud-source-track');
- function paint(){
-  track.replaceChildren(...Array.from({length:6},(_,i)=>{
-   const source=sources[(cursor+i)%sources.length],row=document.createElement('div');
-   row.className='hud-source';row.textContent=source.display;row.title=source.url;
-   row.dataset.sourceId=source.id;return row;
-  }));
+ const track=document.getElementById('hud-source-track'),counter=document.getElementById('hud-training-count');
+ let runId=null,sequence=0,rows=[],timer=null,transitionTimer=null,closed=false;
+ function row(source){
+  const node=document.createElement('div');node.className='hud-source';node.textContent=source.display;
+  node.title=source.url+(source.snapshot_date?' · Common Crawl '+source.snapshot_date:'');
+  node.dataset.sourceId=source.id;return node;
  }
- function advance(){
-  if(!sources.length)return;
-  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+ function paint(items){track.replaceChildren(...items.map(row));}
+ function reset(data){
+  clearTimeout(transitionTimer);track.style.transition='none';track.style.transform='translateY(0)';
+  runId=data.run_id;sequence=data.sequence;rows=data.entries;paint(rows);counter.textContent=String(data.count);
+ }
+ function update(data){
+  counter.parentElement.title=data.error?'Waiting for Common Crawl: '+data.error:'Common Crawl → preference-filtered fragments. Temporary collection; not used for LoRA training.';
+  if(runId!==data.run_id||data.sequence<sequence||data.sequence>sequence+1||rows.length!==6){reset(data);return;}
+  if(data.sequence===sequence)return; // No real record: no movement or counter change.
+  const newest=data.entries.at(-1),reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  sequence=data.sequence;rows=data.entries;
+  track.appendChild(row(newest));
+  // Commit the unshifted seventh row before beginning the six-row viewport scroll.
+  void track.offsetHeight;
   track.style.transition=reduced?'none':'transform 650ms cubic-bezier(.22,.7,.25,1)';
   track.style.transform='translateY(calc(-66 * var(--u)))';
-  clearTimeout(transitionTimer);
-  transitionTimer=setTimeout(()=>{
-   cursor=(cursor+1)%sources.length;track.style.transition='none';track.style.transform='translateY(0)';paint();
-  },reduced?0:670);
+  counter.textContent=String(data.count);
+  transitionTimer=setTimeout(()=>{track.style.transition='none';track.style.transform='translateY(0)';paint(rows);},reduced?0:670);
  }
- async function init(){
+ async function poll(){
   try{
-   const r=await fetch('/assets/training-sources.json');if(!r.ok)throw Error('Source list unavailable');
-   const data=await r.json();sources=data.sources;
-   if(sources.length!==139)throw Error('Expected 139 training sources');
-   paint();timer=setInterval(advance,sourceInterval);
-  }catch(e){track.textContent=e.message;}
-  try{
-   const r=await fetch('/api/artwork/info');if(!r.ok)return;const info=await r.json();
-   for(const [id,key] of Object.entries({'hud-base':'base_model','hud-steps':'steps','hud-learning-rate':'learning_rate','hud-rank':'rank','hud-scale':'scale','hud-temperature':'temperature','hud-top-p':'top_p','hud-context':'context_tokens'})){
-    if(info[key]!==undefined)el(id).textContent=info[key];
-   }
-  }catch(e){/* Static labels retain the verified saved configuration. */}
+   const response=await fetch('/api/collection/status');if(!response.ok)throw Error('Collection unavailable');
+   const data=await response.json();if(!closed)update(data);
+  }catch(error){if(!closed)counter.parentElement.title='Waiting for Common Crawl; count paused.';}
+  if(!closed)timer=setTimeout(poll,1000);
  }
- function frame(){
-  const s=window.afterimageMotion?.snapshot();
-  if(s){const pace=s.pace.toFixed(2)+'×';if(el('hud-pace').textContent!==pace)el('hud-pace').textContent=pace;if(el('hud-mouth').textContent!==s.label)el('hud-mouth').textContent=s.label;}
-  requestAnimationFrame(frame);
- }
- window.addEventListener('pagehide',()=>{clearInterval(timer);clearTimeout(transitionTimer);});
- init();requestAnimationFrame(frame);
+ window.addEventListener('pagehide',()=>{closed=true;clearTimeout(timer);clearTimeout(transitionTimer);});
+ poll();
 })();

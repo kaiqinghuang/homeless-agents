@@ -53,7 +53,6 @@ class ResidueGenerator:
  def next(self,sid,sampling=None):
   with self.lock:
    if not sid or sid!=self.session:raise ValueError('Generation session expired.')
-   if callable(sampling):sampling=sampling()
    r=self._request({'op':'next','session':sid,'sampling':sampling})
    if r.get('session')!=sid:raise RuntimeError('Unexpected text session.')
    self.logger.info(json.dumps({'kind':'generated',**{k:v for k,v in r.items() if k!='sampling'}},ensure_ascii=False));return r

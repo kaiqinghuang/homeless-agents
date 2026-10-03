@@ -12,7 +12,6 @@ from agent_runtime import LocalAgent
 from residue_runtime import ResidueGenerator
 from residue_plan import residue_plan
 from environment_monitor import EnvironmentMonitor
-from live_collection import LiveCollection
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -44,7 +43,7 @@ class Handler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(ROOT), **kwargs)
 
     def log_message(self, format, *args):
-        if urlsplit(self.path).path not in ('/api/status', '/api/room', '/api/collection/status'):
+        if urlsplit(self.path).path not in ('/api/status', '/api/room'):
             super().log_message(format, *args)
 
     def end_headers(self):
@@ -64,9 +63,7 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         path = urlsplit(self.path).path
-        if path == '/api/collection/status':
-            self.respond(self.server.collector.status())
-        elif path == '/api/environment/status':
+        if path == '/api/environment/status':
             self.respond(self.server.monitor.status())
         elif path == '/api/environment/devices':
             try:
@@ -214,7 +211,6 @@ if __name__ == '__main__':
     server.residue = ResidueGenerator(ROOT, args.data_dir / 'residue')
     server.monitor = EnvironmentMonitor(ROOT, server.agent)
     server.audio_enabled = server.residue.config.get('audio_enabled', False)
-    server.collector = LiveCollection(ROOT)
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(KeyboardInterrupt()))
     print(f'Afterimage · Continuous text: http://127.0.0.1:{server.server_port}', flush=True)
     print('Click Start generating. Audio is disabled by default. Text logs: ' + str(args.data_dir / 'residue'), flush=True)
@@ -224,7 +220,6 @@ if __name__ == '__main__':
         pass
     finally:
         server.server_close()
-        server.collector.close()
         server.monitor.close()
         server.agent.close()
         server.residue.close()

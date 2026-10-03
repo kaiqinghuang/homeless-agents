@@ -12,11 +12,11 @@
  }
  function render(s){
   active=s.active;buttons();
-  if(s.active&&!s.interpret)caption(s.state==='capturing'?'Sampling…':'Waiting for next segment…');
+  if(s.active&&!s.interpret)caption('Listening…');
   else if(s.text)caption(s.text);
   else if(s.error)caption('Waiting for an audio observation…');
-  else caption({off:'Off',starting:'Starting microphone…',loading:'Loading local audio model…',listening:'Listening…',waiting:'Waiting for next segment…',capturing:'Sampling…'}[s.state]||'Listening…');
-  el('monitor-device').textContent=[s.device,s.active?'2-second measurement per segment'+(s.interpret?' · descriptions every 8 seconds':' · audio model off'):'',s.error].filter(Boolean).join(' · ')||'Audio observations · display only';
+  else caption({off:'Off',starting:'Starting microphone…',loading:'Loading local audio model…',listening:'Listening…'}[s.state]||'Listening…');
+  el('monitor-device').textContent=[s.device,s.active&&!s.interpret?'Sound controls sampling · audio model off':'',s.error].filter(Boolean).join(' · ')||'Audio observations · display only';
   el('hud-recording').dataset.observations=s.observations;
   el('hud-recording').dataset.captured=s.captured;
   el('hud-recording').dataset.rms=s.features?.rms_dbfs??'';

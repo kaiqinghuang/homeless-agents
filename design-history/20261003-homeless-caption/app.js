@@ -489,7 +489,7 @@ function frame(now){
 }
 function setProgress(value){$('progress').style.width=value+'%';document.querySelector('.track').setAttribute('aria-valuenow',Math.round(value));}
 function updateSubtitle(){
- const text=state.playing?'Homeless Agent: '+(state.plan?.caption??''):'Homeless Agent:';
+ const text=state.playing?'Output: '+(state.plan?.caption??''):'Output:';
  if($('word-subtitle').textContent!==text)$('word-subtitle').textContent=text;
 }
 function highlight(index){

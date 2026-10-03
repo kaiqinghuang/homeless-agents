@@ -50,13 +50,12 @@ class ResidueGenerator:
     self._boot();sid=uuid.uuid4().hex;result=self._request({'op':'start','session':sid});self.session=sid
     self.logger.info(json.dumps({'kind':'start',**result,'adapter_sha256':self.config['adapter_sha256']},ensure_ascii=False));return result
    except Exception as e:self.error=str(e);self.state='error';self._terminate();raise
- def next(self,sid,sampling=None):
+ def next(self,sid):
   with self.lock:
    if not sid or sid!=self.session:raise ValueError('Generation session expired.')
-   if callable(sampling):sampling=sampling()
-   r=self._request({'op':'next','session':sid,'sampling':sampling})
+   r=self._request({'op':'next','session':sid})
    if r.get('session')!=sid:raise RuntimeError('Unexpected text session.')
-   self.logger.info(json.dumps({'kind':'generated',**{k:v for k,v in r.items() if k!='sampling'}},ensure_ascii=False));return r
+   self.logger.info(json.dumps({'kind':'generated',**r},ensure_ascii=False));return r
  def stop(self,sid):
   with self.lock:
    if sid==self.session:self.session=None
