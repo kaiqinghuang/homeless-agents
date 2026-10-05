@@ -1,12 +1,12 @@
 import hashlib,json,tempfile,time,unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch,MagicMock
 from live_collection import LiveCollection
 
 def fixture(root):
     (root/'assets').mkdir()
-    seeds=[{'id':str(i),'url':f'https://original{i}.example/','display':f'original{i}.example'} for i in range(139)]
-    (root/'assets/training-sources.json').write_text(json.dumps({'training_records':139,'sources':seeds}))
+    seeds=[{'id':str(i),'url':f'https://original{i}.example/','display':f'original{i}.example'} for i in range(189)]
+    (root/'assets/training-sources.json').write_text(json.dumps({'training_records':189,'sources':seeds}))
 
 def candidate(host='new.example',text='Home\nAbout\nServices\n404 Page not found'):
     return {'url':f'https://{host}/page','display':host,'text':text,'english_share_estimate':.8,
@@ -21,19 +21,19 @@ class CollectionTests(unittest.TestCase):
             original=(root/'assets/training-sources.json').read_bytes()
             c=LiveCollection(root,autostart=False)
             sentinel=root/'data/keep-original.txt';sentinel.write_text('keep')
-            self.assertEqual(c.status()['count'],139)
+            self.assertEqual(c.status()['count'],189)
             self.assertTrue(c.publish(candidate()))
             saved=json.loads((c.folder/'records/000001.json').read_text())
             self.assertEqual(saved['text'],candidate()['text']);self.assertFalse(saved['training'])
-            self.assertEqual(c.status()['count'],140)
+            self.assertEqual(c.status()['count'],190)
             self.assertFalse(c.publish(candidate()))
             self.assertFalse(c.publish(candidate('another.example')),'duplicate text')
             self.assertFalse(c.publish(candidate(text='Home\nAbout\nServices\nCookies not found')),'duplicate hostname')
             self.assertFalse(c.publish(candidate('original1.example')))
-            self.assertEqual(c.status()['count'],140)
+            self.assertEqual(c.status()['count'],190)
             old_run=c.run_id;c.close()
             c=LiveCollection(root,autostart=False)
-            self.assertNotEqual(c.run_id,old_run);self.assertEqual(c.status()['count'],139)
+            self.assertNotEqual(c.run_id,old_run);self.assertEqual(c.status()['count'],189)
             self.assertEqual(list((c.folder/'records').iterdir()),[])
             self.assertEqual(sentinel.read_text(),'keep')
             self.assertEqual((root/'assets/training-sources.json').read_bytes(),original)
@@ -46,7 +46,7 @@ class CollectionTests(unittest.TestCase):
                 self.assertFalse(c.publish({**candidate(),**changes}))
             with patch.object(Path,'write_text',side_effect=OSError('disk full')):
                 with self.assertRaises(OSError):c.publish(candidate())
-            self.assertEqual(c.status()['count'],139);c.close()
+            self.assertEqual(c.status()['count'],189);c.close()
 
     def test_unknown_folder_and_concurrent_owner_are_not_deleted(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -57,7 +57,16 @@ class CollectionTests(unittest.TestCase):
             keep.unlink();path.rmdir()
             c=LiveCollection(root,autostart=False);c.publish(candidate())
             with self.assertRaises(RuntimeError):LiveCollection(root,autostart=False)
-            self.assertEqual(c.status()['count'],140);c.close()
+            self.assertEqual(c.status()['count'],190);c.close()
+
+    def test_terminated_worker_pipe_does_not_kill_retry_loop(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);fixture(root);c=LiveCollection(root,autostart=False)
+            worker=MagicMock();worker.poll.return_value=-15
+            worker.stdin.close.side_effect=BrokenPipeError('closed pipe')
+            c.process=worker;c._terminate(worker)
+            worker.stdout.close.assert_called_once()
+            self.assertIsNone(c.process);c.close()
 
     def test_network_error_pauses_and_retry_closes(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -67,7 +76,7 @@ class CollectionTests(unittest.TestCase):
                 for _ in range(100):
                     if c.status()['state']=='waiting':break
                     time.sleep(.005)
-                self.assertEqual(c.status()['count'],139)
+                self.assertEqual(c.status()['count'],189)
                 self.assertEqual(c.status()['state'],'waiting');c.close()
 
 if __name__=='__main__':unittest.main()

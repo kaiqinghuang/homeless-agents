@@ -14,9 +14,9 @@ const ctx=vm.createContext({document:{getElementById:el,querySelector:el,createE
 const run=s=>vm.runInContext(s,ctx);
 run('Math.random=()=>.01');
 run(fs.readFileSync(__dirname+'/app.js','utf8'));
-const faces=run('faces');assert.equal(faces.length,21);
+const faces=run('faces');assert.equal(faces.length,24);
 run("uniforms=Object.fromEntries(['spriteRect','spriteVisible','mouth','amount','crop','activeFace','showGuides','geometry','dynamics','axis','faceBounds','softness','guideRadius','guidePoints[0]'].map(x=>[x,x]));for(const [id,c] of Object.entries(spriteFaces)){Object.assign(c.textures,Object.fromEntries(Object.keys(centralPoseFiles).map(k=>[k,id+':'+k])));c.mask=id+':mask';}state.guides=true;draw();");
-assert.equal(calls.length,22);assert.equal(calls[0].activeFace,0);
+assert.equal(calls.length,25);assert.equal(calls[0].activeFace,0);
 // The image pass must include the forehead and ears, not retain mouth-only clipping.
 const [cx,cy,cw,ch]=calls[1].scissor;
 const crop=Array.from(calls[0].crop);
@@ -32,12 +32,12 @@ for(const call of calls)assert.deepEqual(Array.from(call.crop),crop,'all face an
 
 let area=0;
 for(const [i,call] of calls.slice(1).entries()){
- assert.equal(call.activeFace,['central','red-eyes','lower-right','small-left','lower-hood','clay-lower','left-profile','upper-left','right-large','white-upper','tiny-right','ruffle-right','upper-right','wrapped','far-right','wig-left','lower-left','far-upper-left','wicker-left','far-left','top-black'].includes(faces[i].id)?2:1);const [x,y,w,h]=call.scissor;
+ assert.equal(call.activeFace,['central','red-eyes','lower-right','small-left','lower-hood','clay-lower','left-profile','upper-left','right-large','white-upper','tiny-right','ruffle-right','upper-right','wrapped','far-right','wig-left','lower-left','far-upper-left','wicker-left','far-left','top-black','gold-collar','curly-bun','sealed-fur'].includes(faces[i].id)?2:1);const [x,y,w,h]=call.scissor;
  assert.ok(x>=0&&y>=0&&w>0&&h>0&&x+w<=4608&&y+h<=2592);area+=w*h;
 }
-assert.ok(area/(4608*2592)<.25,'mouth passes should touch only a small part of the native-resolution image');
+assert.ok(area/(4608*2592)<.26,'mouth passes should touch only a small part of the native-resolution image');
 for(let i=0;i<faces.length;i++){
- const g=faces[i];if(['central','red-eyes','lower-right','small-left','lower-hood','clay-lower','left-profile','upper-left','right-large','white-upper','tiny-right','ruffle-right','upper-right','wrapped','far-right','wig-left','lower-left','far-upper-left','wicker-left','far-left','top-black'].includes(g.id))continue;run('state.current=[0,1,0]');const rest=Array.from(run(`updateGuides(faces[${i}])`));
+ const g=faces[i];if(['central','red-eyes','lower-right','small-left','lower-hood','clay-lower','left-profile','upper-left','right-large','white-upper','tiny-right','ruffle-right','upper-right','wrapped','far-right','wig-left','lower-left','far-upper-left','wicker-left','far-left','top-black','gold-collar','curly-bun','sealed-fur'].includes(g.id))continue;run('state.current=[0,1,0]');const rest=Array.from(run(`updateGuides(faces[${i}])`));
  run('state.current=[1,1,0]');const open=Array.from(run(`updateGuides(faces[${i}])`));
  assert.equal(open.length,42);assert.ok(open.every(Number.isFinite));
  // At index 4 / 7, the upper / lower lip centers move along the local normal.
@@ -51,6 +51,12 @@ for(let i=0;i<faces.length;i++){
 // rest/stop. The other-face amplitude slider must not distort these stills.
 for(const pose of ['A','B','C','D','E','F','G','H','X']){
  calls.length=0;run(`state.pose='${pose}';state.current=[.123,1,0];draw()`);
+ assert.equal(calls[24].texture,'sealed-fur:'+pose);assert.equal(calls[24].activeFace,2);assert.equal(calls[24].mask,'sealed-fur:mask');assert.equal(calls[24].spriteVisible,pose==='X'?0:1);
+ assert.deepEqual(Array.from(calls[24].spriteRect),[1344/4608,2208/2592,384/4608,384/2592]);
+ assert.equal(calls[23].texture,'curly-bun:'+pose);assert.equal(calls[23].activeFace,2);assert.equal(calls[23].mask,'curly-bun:mask');assert.equal(calls[23].spriteVisible,pose==='X'?0:1);
+ assert.deepEqual(Array.from(calls[23].spriteRect),[4224/4608,704/2592,384/4608,384/2592]);
+ assert.equal(calls[22].texture,'gold-collar:'+pose);assert.equal(calls[22].activeFace,2);assert.equal(calls[22].mask,'gold-collar:mask');assert.equal(calls[22].spriteVisible,pose==='X'?0:1);
+ assert.deepEqual(Array.from(calls[22].spriteRect),[4000/4608,1968/2592,576/4608,576/2592]);
  assert.equal(calls[1].texture,'central:'+pose);assert.equal(calls[1].spriteVisible,pose==='X'?0:1);
  assert.equal(calls[7].texture,'red-eyes:'+pose);assert.equal(calls[7].spriteVisible,pose==='X'?0:1);
  assert.equal(calls[9].texture,'lower-right:'+pose);assert.equal(calls[9].spriteVisible,pose==='X'?0:1);
@@ -229,13 +235,13 @@ for(const pose of ['A','B','C','D','E','F','G','H','X']){
  assert.deepEqual(Array.from(calls[9].spriteRect),[2560/4608,1408/2592,1024/4608,1024/2592]);
  assert.equal(calls[1].mask,'central:mask');assert.equal(calls[7].mask,'red-eyes:mask');
  assert.deepEqual(Array.from(calls[7].spriteRect),[2688/4608,256/2592,1024/4608,1024/2592]);
- for(const id of ['central','red-eyes','lower-right','small-left','lower-hood','clay-lower','left-profile','upper-left','right-large','white-upper','tiny-right','ruffle-right','upper-right','wrapped','far-right','wig-left','lower-left','far-upper-left','wicker-left','far-left','top-black']){
+ for(const id of ['central','red-eyes','lower-right','small-left','lower-hood','clay-lower','left-profile','upper-left','right-large','white-upper','tiny-right','ruffle-right','upper-right','wrapped','far-right','wig-left','lower-left','far-upper-left','wicker-left','far-left','top-black','gold-collar','curly-bun','sealed-fur']){
   const anchors=Array.from(run(`imagePoseGuides(spriteFaces['${id}'].face,'${pose}')`));assert.equal(anchors.length,42);assert.ok(anchors.every(Number.isFinite));
  }
 
  el('amount').value=0;calls.length=0;run('draw()');assert.equal(calls[1].texture,'central:'+pose);el('amount').value=50;
 }
-console.log(`PASS: 21 face passes, rotated lip/guide motion, native-resolution clipping; local passes cover ${(area/(4608*2592)*100).toFixed(1)}% of image.`);
+console.log(`PASS: 24 face passes, rotated lip/guide motion, native-resolution clipping; local passes cover ${(area/(4608*2592)*100).toFixed(1)}% of image.`);
 
 // Two weighted sets (70% current, 30% original) for red eyes; candidate count must not bias set odds.
 assert.equal(run('redEyesFirstVariants.B.length'),2);
@@ -409,7 +415,7 @@ for(const pose of ['C','D']){
 console.log('PASS: ninth-face 70/30 intervals, 14 speaking stills, first-set-only Parted/Open, stable cues, guides and rest.');
 
 assert.equal(run("spriteFaces['right-large'].maskFeather"),24);
-assert.ok(run("Object.entries(spriteFaces).every(([id,c])=>id==='right-large'||id==='white-upper'||id==='tiny-right'||id==='ruffle-right'||id==='upper-right'||id==='wrapped'||id==='far-right'||id==='wig-left'||id==='lower-left'||id==='far-upper-left'||id==='wicker-left'||id==='far-left'||id==='top-black'||c.maskFeather===undefined)"),'other faces retain their original feathering');
+assert.ok(run("Object.entries(spriteFaces).every(([id,c])=>id==='right-large'||id==='white-upper'||id==='tiny-right'||id==='ruffle-right'||id==='upper-right'||id==='wrapped'||id==='far-right'||id==='wig-left'||id==='lower-left'||id==='far-upper-left'||id==='wicker-left'||id==='far-left'||id==='top-black'||id==='gold-collar'||id==='curly-bun'||id==='sealed-fur'||c.maskFeather===undefined)"),'other faces retain their original feathering');
 
 assert.equal(run("spriteFaces['white-upper'].maskFeather"),16);
 console.log('PASS: tenth-face nine cues, scaled sprite coordinates, matching lip guides, full-head bounds and original rest.');
@@ -625,3 +631,19 @@ run("state.pose='X';state.poseRevision++;Math.random=()=>{throw new Error('rest 
 assert.equal(run("spritePose(spriteFaces['far-upper-left'],'X').key"),'X');
 calls.length=0;run('draw()');assert.equal(calls[13].spriteVisible,0);
 console.log('PASS: eighteenth-face 76/24 intervals across 16 stills, stable cues, guide placement, framing and original rest.');
+
+assert.equal(run("spriteFaces['gold-collar'].maskFeather"),16);
+console.log('PASS: gold-collar eight stills, full-head mask, shared 10px/4px framing and original rest.');
+
+assert.equal(run("spriteFaces['curly-bun'].maskFeather"),16);
+console.log('PASS: curly-bun eight poses, full-head mask, shared framing and original rest.');
+
+assert.equal(run("spriteFaces['sealed-fur'].maskFeather"),20);
+console.log('PASS: sealed-fur eight sealed-mouth poses, face mask, shared framing and original rest.');
+
+assert.equal(run("spriteFaces['sealed-fur'].folder"),'sealed-fur-visemes-v2');
+assert.equal(run("spriteFaces['sealed-fur'].variants"),undefined);
+for(const pose of ['A','B','C','D','E','F','G','H']) {
+ assert.equal(run(`spritePose(spriteFaces['sealed-fur'],'${pose}').key`),pose);
+}
+console.log('PASS: sealed-fur selects only version 2 for all eight poses; version 1 excluded.');

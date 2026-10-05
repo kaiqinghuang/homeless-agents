@@ -1,8 +1,8 @@
 {
-  "model": "Qwen2.5-0.5B · LoRA 180",
+  "model": "Qwen2.5-0.5B · LoRA 180 + 120 · emoji-only continuation · 189 historical samples",
   "model_path": "models/qwen2.5-0.5b-base-4bit",
-  "adapter_path": "models/residue-qwen05-step180",
-  "adapter_sha256": "b41fe366c20097cb42987f593865058abaa3f6fd5586aef4da871547011e24a9",
+  "adapter_path": "models/residue-qwen05-emoji50-plus120",
+  "adapter_sha256": "61f4211043b519adc5abca918343b90fa868f50fa64090e572039212e7a4bf9f",
   "prefix": "The",
   "temperature": 0.9,
   "top_p": 0.95,
@@ -10,5 +10,11 @@
   "chunk_min_tokens": 24,
   "chunk_max_tokens": 64,
   "chunk_soft_tokens": 36,
-  "audio_enabled": false
+  "audio_enabled": false,
+  "training_samples": 189,
+  "training_steps": 300,
+  "prior_training_steps": 180,
+  "additional_training_steps": 120,
+  "continuation_samples": 50,
+  "continuation_data": "emoji-only; no country flags; original 139 not replayed"
 }

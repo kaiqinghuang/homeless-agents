@@ -1,17 +1,27 @@
-/* Asset 50-80 layout, measured in the artwork's native 4608 × 2592 space.
-   All corner insets: 64 px. Type: 30 px Myriad Pro, #e6e6e6.
-   Peer rows: 66 px. Caption center: y=2299, preserving the prior center. */
+/* Reference layout mapped to the existing cropped 4608 × 2592 artwork. */
 .artwork-hud{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:100%;height:100%;container-type:inline-size;pointer-events:none;z-index:1;color:#e6e6e6;font-family:"Artwork Myriad Pro","Myriad Pro","PingFang SC",sans-serif;font-style:normal;font-weight:400;letter-spacing:normal;text-shadow:none}
 .stage:fullscreen .artwork-hud{width:min(100vw,177.77777778vh);height:min(100vh,56.25vw)}
 .artwork-hud>*{--u:calc(100cqw / 4608);font-size:calc(30 * var(--u));line-height:calc(40 * var(--u))}
-.hud-model{position:absolute;top:calc(64 * var(--u));left:calc(64 * var(--u));width:calc(900 * var(--u))}
-.hud-row{height:calc(66 * var(--u));display:flex;gap:.23em;align-items:flex-start;white-space:nowrap}
-.hud-model::after{content:"";position:absolute;left:calc(29 * var(--u));top:calc(54 * var(--u));height:calc(12 * var(--u));width:calc(1.5 * var(--u));background:rgba(230,230,230,.5)}
-.hud-sources{position:relative;margin-left:calc(29 * var(--u));height:calc(6 * 66 * var(--u));overflow:hidden;mask-image:linear-gradient(to bottom,#000 0%,#000 80%,rgba(0,0,0,.25) 92%,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 80%,rgba(0,0,0,.25) 92%,transparent 100%)}
-.hud-sources::before{content:"";position:absolute;top:0;bottom:calc(46 * var(--u));left:0;width:calc(1.5 * var(--u));background:rgba(230,230,230,.5)}
+.hud-model{position:absolute;top:calc(1970 * var(--u));left:calc(3206 * var(--u));width:calc(480 * var(--u))}
+.hud-row{transform:translateX(calc(-2 * var(--u)));height:calc(70 * var(--u));display:flex;gap:.23em;align-items:flex-start;white-space:nowrap}
+.hud-model::after{content:"";position:absolute;left:calc(29 * var(--u));top:calc(40 * var(--u));height:calc(30 * var(--u));width:calc(1.5 * var(--u));background:rgba(230,230,230,.5)}
+.hud-sources{position:relative;margin-left:calc(29 * var(--u));height:calc(7 * 73 * var(--u));overflow:hidden;mask-image:linear-gradient(to bottom,#000 0%,#000 84%,rgba(0,0,0,.25) 94%,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 84%,rgba(0,0,0,.25) 94%,transparent 100%)}
+.hud-sources::before{content:"";position:absolute;top:0;bottom:calc(53 * var(--u));left:0;width:calc(1.5 * var(--u));background:rgba(230,230,230,.5)}
 .hud-source-track{will-change:transform}
-.hud-source{position:relative;height:calc(66 * var(--u));padding-left:calc(13 * var(--u));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.5}
+.hud-source{position:relative;height:calc(73 * var(--u));padding-left:calc(13 * var(--u));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.5}
 .hud-source::before{content:"";position:absolute;left:0;top:calc(20 * var(--u));width:calc(10 * var(--u));height:calc(1.5 * var(--u));background:currentColor}
-/* v1/v2: 90% layout width × (30/75) scale = 36% visible width. */
-.word-subtitle{position:absolute;left:50%;top:calc(2299 * var(--u));transform:translate(-50%,-50%);width:max-content;max-width:36%;margin:0;padding:0;background:none;text-align:center;white-space:normal;overflow-wrap:anywhere;line-height:1}
+.hud-output-panel{--hud-line:calc(1 * var(--u));position:absolute;left:calc(3696 * var(--u));top:calc(1970 * var(--u));width:calc(23 * 37 * var(--u));height:calc(15 * 37 * var(--u));border:0;box-shadow:inset 0 0 0 var(--hud-line) rgba(230,230,230,.5)}
+.hud-output-panel::before{content:"";position:absolute;inset:0;clip-path:inset(var(--hud-line));opacity:.18;background-image:linear-gradient(#e6e6e6 calc(.5 * var(--hud-line)),transparent calc(.5 * var(--hud-line)),transparent calc(100% - .5 * var(--hud-line)),#e6e6e6 calc(100% - .5 * var(--hud-line))),linear-gradient(90deg,#e6e6e6 calc(.5 * var(--hud-line)),transparent calc(.5 * var(--hud-line)),transparent calc(100% - .5 * var(--hud-line)),#e6e6e6 calc(100% - .5 * var(--hud-line)));background-size:calc(37 * var(--u)) calc(37 * var(--u));pointer-events:none}
+.word-subtitle{position:absolute;left:calc(33 * var(--u));top:calc(10 * var(--u));width:calc(776 * var(--u));max-width:none;height:calc(7 * 37 * var(--u));margin:0;padding:0;background:none;transform:none;text-align:left;white-space:normal;overflow-wrap:anywhere;line-height:calc(37 * var(--u));font-size:calc(30 * var(--u))}
+.output-word{opacity:.5}.output-word.spoken{opacity:1}.output-prefix{opacity:1}
+.hud-chart{position:absolute;left:calc(33 * var(--u));top:calc(299.083333 * var(--u));width:calc(287.777778 * var(--u));height:calc(239.472222 * var(--u));overflow:visible}
+/* SVG strokes use the same rendered width as the grid, independent of chart scaling. */
+.hud-chart g[stroke]>*{vector-effect:non-scaling-stroke;stroke-width:var(--hud-line)}
+.hud-chart text{fill:currentColor;font-family:inherit;font-size:10.5px;font-weight:400}
+.hud-model-detail{position:absolute;left:calc(363 * var(--u));top:calc(299 * var(--u));font-size:calc(11 * var(--u));line-height:calc(22 * var(--u));white-space:nowrap}
+.hud-detail-lora{display:flex;align-items:flex-start;gap:calc(7 * var(--u));margin-top:calc(1 * var(--u))}
+.hud-detail-tree{position:relative;padding-left:calc(8 * var(--u))}
+.hud-detail-tree::before{content:"";position:absolute;left:0;top:calc(11 * var(--u));height:calc(22 * var(--u));width:var(--hud-line);background:currentColor}
+.hud-detail-tree>div::before{content:"";position:absolute;left:0;transform:translateY(calc(11 * var(--u)));width:calc(6 * var(--u));height:var(--hud-line);background:currentColor}
+.hud-sampling{margin-top:calc(34 * var(--u));line-height:calc(25 * var(--u))}
 @media(prefers-reduced-motion:reduce){.hud-source-track{will-change:auto}}

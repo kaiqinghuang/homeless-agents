@@ -1,7 +1,7 @@
 """Fresh bounded Common Crawl WARC ranges -> the established residue selector.
 
-Runs in the existing research venv. One candidate per stdin request, so neither
-network downloads nor discarded pages accumulate while the display is waiting.
+Runs in the existing research venv. One candidate per stdin request, drawn from three bounded archive batches.
+Only selected fragments are buffered; downloads pause while the display waits.
 This is preference-driven selection inspired by FineWeb, not official rejects.
 """
 import gzip,hashlib,io,json,os,random,re,sys,urllib.request,zlib
@@ -96,7 +96,7 @@ def select_fragment(text):
                     'score':round(score,2),'source_text_sha256':hashlib.sha256(text.encode()).hexdigest()}
     return None
 
-def candidates():
+def candidate_batches():
     crawl,paths=archive_paths()
     emit({'state':'collecting','crawl':crawl})
     while True:
@@ -112,7 +112,12 @@ def candidates():
             except Exception as error:
                 emit({'state':'retrying','error':type(error).__name__})
                 raise  # Supervisor backs off rather than flooding failing endpoints.
-            for payload,record_offset,record_length in members(raw,offset):
+            # Keep only byte spans while shuffling, not expanded HTML payloads.
+            spans=[(start,length) for _,start,length in members(raw,offset)]
+            RNG.shuffle(spans)
+            batch=[];hosts=set()
+            for start,length in spans:
+                payload,record_offset,record_length=next(members(raw[start-offset:start-offset+length],start))
                 try:
                     record=next(iter(ArchiveIterator(io.BytesIO(payload))))
                     if record.rec_type!='response':continue
@@ -121,20 +126,43 @@ def candidates():
                     doc=process_record(record)
                     if not doc or len(doc['text'])>500000:continue
                     parts=urlsplit(doc['url'])
-                    if parts.scheme not in ('http','https') or not parts.hostname or parts.username:continue
+                    if parts.scheme not in ('http','https') or not parts.hostname or parts.username or parts.hostname in hosts:continue
                     source,_,_=text_nodes(doc['text'])
                     if not source or len(source)>250000:continue
                     selected=select_fragment(source)
                     if not selected:continue
                     # Literal selection and source offsets are checked before publication.
                     assert source[selected['source_start']:selected['source_end']]==selected['text']
-                    yield {**selected,'url':doc['url'],'display':parts.hostname,
+                    batch.append({**selected,'url':doc['url'],'display':parts.hostname,
                            'snapshot_date':doc.get('date'),'warc_id':doc.get('id'),'crawl':crawl,
                            'warc_file':path,'warc_offset':record_offset,'warc_length':record_length,
                            'source_method':'HTML_text_nodes_pre_C4','selection':'existing_preference_rules_automatic',
                            'fineweb_membership':'not_assessed','training':False,
-                           'text_sha256':hashlib.sha256(selected['text'].encode()).hexdigest()}
+                           'text_sha256':hashlib.sha256(selected['text'].encode()).hexdigest()})
+                    hosts.add(parts.hostname)
+                    if len(batch)>=32:break
                 except (ValueError,KeyError,StopIteration,UnicodeError,zlib.error,etree.ParserError):continue
+            if batch:yield batch
+
+def mix_batches(batches,lanes=3):
+    """At most 3 x 32 selected fragments; refill only a depleted lane."""
+    pools=[]
+    exhausted=False
+    for _ in range(lanes):
+        batch=next(batches,None)
+        if batch is None:exhausted=True;break
+        if batch:pools.append(list(batch))
+    while pools:
+        lane=RNG.randrange(len(pools));pool=pools[lane]
+        row=pool.pop(RNG.randrange(len(pool)))
+        yield row
+        if not pool:
+            replacement=None if exhausted else next(batches,None)
+            if replacement: pools[lane]=list(replacement)
+            else:exhausted=True;pools.pop(lane)
+
+def candidates():
+    yield from mix_batches(candidate_batches())
 
 def main():
     try:os.nice(10)

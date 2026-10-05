@@ -15,8 +15,9 @@ class LiveCollection:
         self.run_id=uuid.uuid4().hex;self.sequence=0;self.state='starting';self.error='';self.crawl=None
         self.last_publish=time.monotonic();self.db=None;self.guard=None
         seed=json.loads((self.root/'assets/training-sources.json').read_text())
-        self.base=seed['training_records'];assert self.base==139
-        self.recent=collections.deque(seed['sources'][:6],maxlen=6)
+        self.base=seed['training_records'];assert self.base==len(seed['sources']) and self.base>0
+        self.corpus_path=self.root/seed.get('corpus_path','training/residue-qwen05-20261001/corpus.jsonl')
+        self.recent=collections.deque(seed['sources'][:7],maxlen=7)
         self.folder=self.root/'data/live-collection'
         self._prepare(seed['sources'])
         if autostart:
@@ -41,7 +42,7 @@ class LiveCollection:
             self.db.execute('CREATE TABLE seen (url TEXT UNIQUE, host TEXT UNIQUE, digest TEXT UNIQUE)')
             for row in sources:
                 self.db.execute('INSERT OR IGNORE INTO seen VALUES (?,?,NULL)',(row['url'],urlsplit(row['url']).hostname))
-            corpus=self.root/'training/residue-qwen05-20261001/corpus.jsonl'
+            corpus=self.corpus_path
             if corpus.is_file():
                 with corpus.open() as stream:
                     for line in stream:
@@ -126,7 +127,9 @@ class LiveCollection:
             try:p.wait(timeout=3)
             except subprocess.TimeoutExpired:p.kill();p.wait()
         for stream in (p.stdin,p.stdout):
-            if stream:stream.close()
+            if stream:
+                try:stream.close()
+                except OSError:pass  # A terminated worker may already have closed its pipe.
         with self.lock:
             if self.process is p:self.process=None
 

@@ -60,7 +60,10 @@ const faces=[centralFace,
  makeFace('white-upper',667.03,90.19,8.48,-0.040,0.51),
  makeFace('clay-lower',627.46,559.62,5.14,-0.100,0.51),
  makeFace('ruffle-right',970.48,579.41,8.74,0.070,1.54),
- makeFace('far-right',1136.21,458.13,5.91,0.040,0.77)
+ makeFace('far-right',1136.21,458.13,5.91,0.040,0.77),
+ makeFace('gold-collar',1083.34,566.82,8.5,0.035,0.50),
+ makeFace('curly-bun',1147.75,260.10,5.5,-0.09,0.50),
+ makeFace('sealed-fur',398.61,634.77,7.5,0.20,0.50)
 ];
 // Frame the entire composite together: remove 10px left / 4px right at the
 // 1184px reference width, then enlarge uniformly to fill. Center the vertical crop.
@@ -246,7 +249,16 @@ const farLeftLipAnchors={"X":[365,635,479,635,427,623,427,628],"A":[371,627,481,
 const topBlackHeadOutline=[[302,-20],[670,-20],[684,12],[695,52],[696,88],[687,130],[676,172],[656,202],[629,215],[612,224],[598,248],[584,277],[550,297],[508,310],[468,313],[428,303],[398,287],[377,267],[362,239],[347,212],[327,191],[317,154],[298,128],[287,97],[279,65],[284,36]];
 const topBlackLipAnchors={"X":[422,220,539,210,480,213,480,216],"A":[432,219,544,212,486,210,486,213],"B":[419,217,547,208,484,208,484,212],"C":[426,218,544,210,486,199,486,207],"D":[426,216,540,210,483,201,483,218],"E":[441,213,540,207,491,197,491,219],"F":[449,222,532,216,488,210,488,218],"G":[434,224,544,215,489,216,489,219],"H":[419,222,548,213,485,214,485,217]};
 const farUpperLeftSecondVariants={"A":[{"key":"second:01-pressed","file":"01-pressed","folder":"far-upper-left-visemes-v2","anchors":[275,520,405,519,340,511,340,514]}],"B":[{"key":"second:02-wide","file":"02-wide","folder":"far-upper-left-visemes-v2","anchors":[274,520,415,513,342,513,342,516]}],"C":[{"key":"second:03-parted","file":"03-parted","folder":"far-upper-left-visemes-v2","anchors":[275,520,404,516,367,508,367,518]}],"D":[{"key":"second:04-open","file":"04-open","folder":"far-upper-left-visemes-v2","anchors":[275,520,405,533,371,509,371,526]}],"E":[{"key":"second:05-oh","file":"05-oh","folder":"far-upper-left-visemes-v2","anchors":[275,520,405,515,368,506,368,518]}],"F":[{"key":"second:06-oo","file":"06-oo","folder":"far-upper-left-visemes-v2","anchors":[275,520,408,523,375,512,375,519]}],"G":[{"key":"second:07-fold","file":"07-fold","folder":"far-upper-left-visemes-v2","anchors":[275,520,405,517,343,509,343,512]}],"H":[{"key":"second:08-skew","file":"08-skew","folder":"far-upper-left-visemes-v2","anchors":[275,520,405,520,376,512,376,519]}]};
+const goldCollarHeadOutline=[[332,15],[378,17],[424,27],[469,48],[502,79],[530,114],[545,157],[556,205],[557,252],[551,288],[562,282],[570,303],[570,335],[565,364],[552,388],[536,399],[528,424],[513,454],[495,480],[472,506],[443,528],[410,545],[378,554],[346,545],[318,528],[292,508],[269,486],[249,460],[228,425],[215,405],[192,401],[174,389],[160,370],[150,344],[147,315],[155,287],[173,271],[186,274],[184,240],[178,204],[177,163],[182,124],[194,89],[216,59],[248,35],[290,21]];
+const goldCollarLipAnchors={"X":[320,420,433,426,380,409,382,426],"A":[322,417,444,425,381,407,383,424],"B":[320,421,438,427,382,412,382,425],"C":[324,418,445,425,385,409,385,430],"D":[323,418,440,424,385,410,385,434],"E":[341,418,433,420,386,409,386,433],"F":[334,417,443,423,386,410,386,430],"G":[322,417,444,425,386,409,386,426],"H":[322,419,443,419,382,409,382,426]};
+const curlyBunHeadOutline=[[495,144],[555,127],[602,145],[646,190],[641,222],[711,250],[749,305],[782,349],[813,390],[847,440],[866,497],[876,548],[858,576],[836,580],[839,618],[834,675],[819,731],[802,775],[777,824],[755,864],[725,907],[695,935],[650,947],[600,939],[560,918],[520,895],[483,864],[450,830],[420,801],[382,778],[356,750],[339,710],[331,660],[337,625],[319,604],[319,568],[335,533],[351,496],[358,456],[381,408],[402,370],[429,341],[456,309],[485,278],[483,247],[472,216],[469,181]];
+const curlyBunLipAnchors={"X":[592,834,703,823,644,815,644,829],"A":[574,850,709,806,649,807,649,821],"B":[555,793,715,821,647,798,647,813],"C":[588,851,707,808,648,796,648,817],"D":[590,850,696,844,632,820,637,837],"E":[550,850,698,811,651,814,651,831],"F":[585,823,702,823,646,807,646,819],"G":[590,843,703,817,648,807,648,820],"H":[558,851,695,806,630,826,630,834]};
+const sealedFurHeadOutline=[[470,400],[512,382],[555,366],[604,352],[649,368],[690,395],[714,430],[746,455],[765,488],[763,530],[752,575],[742,618],[727,662],[709,711],[685,756],[652,793],[615,826],[576,845],[541,837],[511,817],[482,787],[459,753],[441,711],[431,666],[428,619],[428,572],[434,526],[442,481],[455,438]];
+const sealedFurLipAnchors={"X":[480,651,643,692,548,670,548,710],"A":[480,652,643,692,547,671,548,710],"B":[478,651,645,692,548,670,548,710],"C":[480,651,643,692,550,670,550,710],"D":[480,651,643,694,548,670,548,714],"E":[480,651,643,692,547,671,547,710],"F":[480,651,643,692,550,670,550,711],"G":[480,651,643,692,548,670,551,710],"H":[482,651,645,692,552,670,552,710]};
 const spriteFaces={
+ 'sealed-fur':{face:faces.find(g=>g.id==='sealed-fur'),folder:'sealed-fur-visemes-v2',origin:[1344,2208],sourceScale:.375,rect:[1344/4608,2208/2592,384/4608,384/2592],outline:sealedFurHeadOutline,maskFeather:20,lipAnchors:sealedFurLipAnchors,textures:{},mask:null},
+ 'curly-bun':{face:faces.find(g=>g.id==='curly-bun'),folder:'curly-bun-visemes-v1',origin:[4224,704],sourceScale:.375,rect:[4224/4608,704/2592,384/4608,384/2592],outline:curlyBunHeadOutline,maskFeather:16,lipAnchors:curlyBunLipAnchors,textures:{},mask:null},
+ 'gold-collar':{face:faces.find(g=>g.id==='gold-collar'),folder:'gold-collar-visemes-v1',version:3,origin:[4000,1968],sourceScale:.5625,rect:[4000/4608,1968/2592,576/4608,576/2592],outline:goldCollarHeadOutline,maskFeather:16,lipAnchors:goldCollarLipAnchors,textures:{},mask:null},
  'top-black':{face:faces.find(g=>g.id==='top-black'),folder:'top-black-visemes-v1',origin:[768,0],sourceScale:.5625,rect:[768/4608,0/2592,576/4608,576/2592],outline:topBlackHeadOutline,maskFeather:16,lipAnchors:topBlackLipAnchors,textures:{},mask:null},
  'far-left':{face:faces.find(g=>g.id==='far-left'),folder:'far-left-visemes-v1',origin:[192,592],sourceScale:.5625,rect:[192/4608,592/2592,576/4608,576/2592],outline:farLeftHeadOutline,maskFeather:16,lipAnchors:farLeftLipAnchors,textures:{},mask:null},
  'wicker-left':{face:faces.find(g=>g.id==='wicker-left'),folder:'wicker-left-visemes-v1',origin:[192,1456],sourceScale:.5625,rect:[192/4608,1456/2592,576/4608,576/2592],outline:wickerLeftHeadOutline,maskFeather:16,lipAnchors:wickerLeftLipAnchors,textures:{},mask:null},
@@ -473,7 +485,7 @@ function frame(now){
  if(state.playing){
   state.elapsed=(now-state.start)/1000;
   const plan=state.plan;
-  if(state.elapsed>=plan.duration){state.playing=false;state.hold='X';pose='X';$('stop').disabled=true;$('play').textContent='Play again';$('status').textContent='Finished · 播放结束';setProgress(100);highlight(-1);}
+  if(state.elapsed>=plan.duration){state.playing=false;state.hold='X';pose='X';$('stop').disabled=true;$('play').textContent='Play again';$('status').textContent='Finished · 播放结束';setProgress(100);highlight(-1);window.afterimageOutput?.finish();}
   else{
    const index=plan.timeline.findIndex(c=>state.elapsed>=c.start&&state.elapsed<c.end);
    const cue=plan.timeline[index];
@@ -489,17 +501,18 @@ function frame(now){
 }
 function setProgress(value){$('progress').style.width=value+'%';document.querySelector('.track').setAttribute('aria-valuenow',Math.round(value));}
 function updateSubtitle(){
- const text=state.playing?'Homeless Agent: '+(state.plan?.caption??''):'Homeless Agent:';
+ if(window.afterimageOutput){if(state.playing)window.afterimageOutput.render(state.plan?.words??[]);return;}
+ const text=state.playing?'Homeless Agent Output: '+(state.plan?.caption??''):'Homeless Agent Output:';
  if($('word-subtitle').textContent!==text)$('word-subtitle').textContent=text;
 }
 function highlight(index){
  updateSubtitle();
  if(index===lastWord)return;
- lastWord=index;
+ lastWord=index;window.afterimageOutput?.advance(index);
  [...$('readout').children].forEach((span,i)=>span.classList.toggle('current',i===index));
- // The lower readout still highlights words; the artwork keeps the full text visible through pauses.
+ // Spoken words stay bright through pauses; future words remain at half opacity.
 }
-function resetPlayback(){state.poseRevision++;state.playing=false;state.hold='X';state.pose='X';state.elapsed=0;lastCue=-1;highlight(-1);setProgress(0);$('stop').disabled=true;$('play').textContent='Play sentence';document.querySelectorAll('[data-shape]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.shape==='X')));}
+function resetPlayback(){window.afterimageOutput?.clear();state.poseRevision++;state.playing=false;state.hold='X';state.pose='X';state.elapsed=0;lastCue=-1;highlight(-1);setProgress(0);$('stop').disabled=true;$('play').textContent='Play sentence';document.querySelectorAll('[data-shape]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.shape==='X')));}
 function stop(){state.request++;resetPlayback();$('play').disabled=!state.ready;$('status').textContent='Ready · 等待输入';}
 async function play(){
  const pace=sliderValue('speed');

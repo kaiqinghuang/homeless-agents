@@ -10,20 +10,20 @@
  function paint(items){track.replaceChildren(...items.map(row));}
  function reset(data){
   clearTimeout(transitionTimer);track.style.transition='none';track.style.transform='translateY(0)';
-  runId=data.run_id;sequence=data.sequence;rows=data.entries;paint(rows);counter.textContent=String(data.count);
+  runId=data.run_id;sequence=data.sequence;rows=data.entries;paint(rows);counter.textContent=String(data.count);document.getElementById('hud-collected-total').textContent=String(data.count);
  }
  function update(data){
   counter.parentElement.title=data.error?'Waiting for Common Crawl: '+data.error:'Common Crawl → preference-filtered fragments. Temporary collection; not used for LoRA training.';
-  if(runId!==data.run_id||data.sequence<sequence||data.sequence>sequence+1||rows.length!==6){reset(data);return;}
+  if(runId!==data.run_id||data.sequence<sequence||data.sequence>sequence+1||rows.length!==7){reset(data);return;}
   if(data.sequence===sequence)return; // No real record: no movement or counter change.
   const newest=data.entries.at(-1),reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   sequence=data.sequence;rows=data.entries;
   track.appendChild(row(newest));
-  // Commit the unshifted seventh row before beginning the six-row viewport scroll.
+  // Commit the unshifted eighth row before beginning the seven-row viewport scroll.
   void track.offsetHeight;
   track.style.transition=reduced?'none':'transform 650ms cubic-bezier(.22,.7,.25,1)';
-  track.style.transform='translateY(calc(-66 * var(--u)))';
-  counter.textContent=String(data.count);
+  track.style.transform='translateY(calc(-73 * var(--u)))';
+  counter.textContent=String(data.count);document.getElementById('hud-collected-total').textContent=String(data.count);
   transitionTimer=setTimeout(()=>{track.style.transition='none';track.style.transform='translateY(0)';paint(rows);},reduced?0:670);
  }
  async function poll(){
@@ -35,4 +35,50 @@
  }
  window.addEventListener('pagehide',()=>{closed=true;clearTimeout(timer);clearTimeout(transitionTimer);});
  poll();
+})();
+
+// Seven native-size text lines: the same measurement is used for prefetch and display.
+(()=>{
+ const output=document.getElementById('word-subtitle');
+ let words=null,spans=[],spoken=-1,measure=null;
+ function clear(){words=null;spans=[];spoken=-1;output.textContent='Homeless Agent Output:';}
+ function render(next){
+  if(words===next)return;
+  words=next;spoken=-1;
+  const prefix=document.createElement('span');prefix.className='output-prefix';prefix.textContent='Homeless Agent Output: ';
+  spans=next.map(word=>{const span=document.createElement('span');span.className='output-word';span.textContent=word.text;return span;});
+  output.replaceChildren(prefix,...spans);
+ }
+ function advance(index){
+  if(index<0)return;
+  const end=Math.min(index,spans.length-1);
+  for(let i=spoken+1;i<=end;i++)spans[i].classList.add('spoken');
+  spoken=Math.max(spoken,end);
+ }
+ function height(text){
+  if(!measure){
+   measure=document.createElement('div');measure.setAttribute('aria-hidden','true');
+   Object.assign(measure.style,{position:'fixed',left:'-10000px',top:'0',visibility:'hidden',pointerEvents:'none',width:'776px',fontFamily:'"Artwork Myriad Pro","Myriad Pro","PingFang SC",sans-serif',fontSize:'30px',fontWeight:'400',lineHeight:'37px',whiteSpace:'normal',overflowWrap:'anywhere',padding:'0',border:'0'});
+   document.body.appendChild(measure);
+  }
+  measure.textContent='Homeless Agent Output: '+text;return measure.scrollHeight;
+ }
+ function page(raw){
+  const text=raw.replace(/\s+/g,' ').trim();
+  const fits=t=>t.length<=900&&height(t)<=259;
+  if(fits(text))return {text,remaining:'',ready:height(text)>=259};
+  const ends=[...text.matchAll(/\s+/g)].map(m=>m.index).filter(n=>n>0&&n<=900);
+  let lo=0,hi=ends.length-1,cut=0;
+  while(lo<=hi){const mid=(lo+hi)>>1;if(fits(text.slice(0,ends[mid]))){cut=ends[mid];lo=mid+1;}else hi=mid-1;}
+  if(!cut){ // A single long URL/token may span several lines; preserve every character.
+   const chars=Array.from(text);lo=1;hi=Math.min(chars.length,900);
+   while(lo<=hi){const mid=(lo+hi)>>1,part=chars.slice(0,mid).join('');if(fits(part)){cut=part.length;lo=mid+1;}else hi=mid-1;}
+  }
+  return {text:text.slice(0,cut),remaining:text.slice(cut).trimStart(),ready:true};
+ }
+ function sampling(values){
+  if(!values)return;
+  for(const [key,id] of [['temperature','hud-temperature'],['top_p','hud-top-p']])if(Number.isFinite(values[key]))document.getElementById(id).textContent=String(values[key]);
+ }
+ window.afterimageOutput={render,advance,finish:()=>advance(spans.length-1),clear,page,sampling,ready:()=>document.fonts?.ready??Promise.resolve()};
 })();
