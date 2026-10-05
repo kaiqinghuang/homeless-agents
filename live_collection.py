@@ -9,15 +9,17 @@ def normalized_hash(text):
     return hashlib.sha256(' '.join(text.casefold().split()).encode()).hexdigest()
 
 class LiveCollection:
-    def __init__(self,root,interval=8,autostart=True):
+    def __init__(self,root,interval=16,autostart=True):
         self.root=Path(root).resolve();self.interval=interval
+        self.lifecycle=threading.Lock();self.autostart=autostart
         self.lock=threading.RLock();self.stopped=threading.Event();self.process=None;self.thread=None
         self.run_id=uuid.uuid4().hex;self.sequence=0;self.state='starting';self.error='';self.crawl=None
         self.last_publish=time.monotonic();self.db=None;self.guard=None
         seed=json.loads((self.root/'assets/training-sources.json').read_text())
         self.base=seed['training_records'];assert self.base==len(seed['sources']) and self.base>0
         self.corpus_path=self.root/seed.get('corpus_path','training/residue-qwen05-20261001/corpus.jsonl')
-        self.recent=collections.deque(seed['sources'][:7],maxlen=7)
+        self.sources=seed['sources']
+        self.recent=collections.deque(self.sources[:7],maxlen=7)
         self.folder=self.root/'data/live-collection'
         self._prepare(seed['sources'])
         if autostart:
@@ -26,10 +28,12 @@ class LiveCollection:
     def _prepare(self,sources):
         parent=self.folder.parent;parent.mkdir(exist_ok=True)
         if parent.is_symlink() or self.folder.is_symlink():raise ValueError('Refusing a linked collection directory')
-        self.guard=(parent/'live-collection.lock').open('a')
-        try:fcntl.flock(self.guard,fcntl.LOCK_EX|fcntl.LOCK_NB)
-        except Exception:
-            self.guard.close();raise RuntimeError('A live collector already owns this folder')
+        if self.guard is None:
+            self.guard=(parent/'live-collection.lock').open('a')
+            try:fcntl.flock(self.guard,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            except Exception:
+                self.guard.close();self.guard=None
+                raise RuntimeError('A live collector already owns this folder')
         try:
             if self.folder.exists():
                 marker=self.folder/'.collection-owned'
@@ -53,14 +57,14 @@ class LiveCollection:
             self.db.commit()
             self._manifest()
         except Exception:
-            if self.db:self.db.close()
-            self.guard.close();raise
+            if self.db:self.db.close();self.db=None
+            self.guard.close();self.guard=None;raise
 
     def _manifest(self):
         record={'run_id':self.run_id,'base_count':self.base,'new_records':self.sequence,
                 'total_display_count':self.base+self.sequence,'interval_seconds':self.interval,
                 'source':'Common Crawl WARC -> HTML text nodes -> existing residue preferences',
-                'training':False,'reset':'This directory is cleared at the next server startup.',
+                'training':False,'reset':'Cleared at server startup or when restarting live collection.',
                 'english_share':'Approximate alphabetic-character coverage >= 30%, not classifier confidence.',
                 'selection':'Automated preference filtering, not manual review or verified FineWeb rejection.'}
         temp=self.folder/'session.json.tmp';temp.write_text(json.dumps(record,ensure_ascii=False,indent=2)+'\n')
@@ -153,11 +157,44 @@ class LiveCollection:
             if self.stopped.wait(retry):break
             retry=min(60,retry*2)
 
-    def close(self):
+    def _stop_worker(self):
         self.stopped.set()
         with self.lock:p=self.process
-        if p and p.poll() is None:p.terminate()
-        if self.thread:self.thread.join(timeout=5)
-        with self.lock:
-            if self.db:self.db.close();self.db=None
-            if self.guard:self.guard.close();self.guard=None
+        if p and p.poll() is None:
+            try:p.terminate()
+            except ProcessLookupError:pass
+            try:p.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                p.kill();p.wait(timeout=3)
+        if self.thread:
+            self.thread.join(timeout=5)
+            if self.thread.is_alive():raise RuntimeError('Collector has not stopped; records were not cleared')
+        self.thread=None
+
+    def restart(self,expected_run_id):
+        """Stop the old worker before clearing only its owned temporary directory."""
+        with self.lifecycle:
+            # Repeated/stale requests must not erase a newer round.
+            if expected_run_id!=self.run_id:return self.status()
+            with self.lock:self.state='restarting'
+            self._stop_worker()
+            with self.lock:
+                if self.db:self.db.close();self.db=None
+                self.run_id=uuid.uuid4().hex;self.sequence=0
+                self.state='starting';self.error='';self.crawl=None
+                self.recent=collections.deque(self.sources[:7],maxlen=7)
+                self._prepare(self.sources)
+                self.last_publish=time.monotonic()
+                self.stopped.clear()
+                result=self.status()
+                if self.autostart:
+                    self.thread=threading.Thread(target=self._run,daemon=True,name='live-collection')
+                    self.thread.start()
+                return result
+
+    def close(self):
+        with self.lifecycle:
+            self._stop_worker()
+            with self.lock:
+                if self.db:self.db.close();self.db=None
+                if self.guard:self.guard.close();self.guard=None

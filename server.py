@@ -110,7 +110,7 @@ class Handler(SimpleHTTPRequestHandler):
         if origin and urlsplit(origin).netloc != self.headers.get('Host'):
             self.respond({'error': 'Only the local app can submit recordings.'}, 403)
             return
-        if parsed.path not in ('/api/environment/start', '/api/environment/stop', '/api/environment/observe', '/api/residue/start', '/api/residue/next', '/api/residue/stop', '/api/plan', '/api/audio', '/api/room', '/api/engine/start', '/api/agent/start', '/api/agent/decide', '/api/agent/test'):
+        if parsed.path not in ('/api/collection/restart', '/api/environment/start', '/api/environment/stop', '/api/environment/observe', '/api/residue/start', '/api/residue/next', '/api/residue/stop', '/api/plan', '/api/audio', '/api/room', '/api/engine/start', '/api/agent/start', '/api/agent/decide', '/api/agent/test'):
             self.send_error(404)
             return
         if not self.server.audio_enabled and parsed.path in ('/api/environment/start', '/api/environment/observe', '/api/audio', '/api/room', '/api/engine/start', '/api/agent/start', '/api/agent/decide', '/api/agent/test'):
@@ -135,7 +135,12 @@ class Handler(SimpleHTTPRequestHandler):
             data = json.loads(payload)
             if not isinstance(data, dict):
                 raise ValueError('Expected an object.')
-            if parsed.path == '/api/environment/start':
+            if parsed.path == '/api/collection/restart':
+                run_id = data.get('run_id')
+                if not isinstance(run_id, str) or not run_id:
+                    raise ValueError('A collection run ID is required.')
+                result = self.server.collector.restart(run_id)
+            elif parsed.path == '/api/environment/start':
                 result = self.server.monitor.start(data.get('device', 'builtin'), data.get('session'), data.get('interpret', True))
             elif parsed.path == '/api/environment/stop':
                 session = data.get('session')

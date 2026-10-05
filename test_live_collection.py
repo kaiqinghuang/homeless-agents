@@ -68,6 +68,43 @@ class CollectionTests(unittest.TestCase):
             worker.stdout.close.assert_called_once()
             self.assertIsNone(c.process);c.close()
 
+    def test_button_restart_clears_only_temporary_round_and_rejects_stale_request(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);fixture(root);c=LiveCollection(root,autostart=False)
+            try:
+                original=(root/'assets/training-sources.json').read_bytes()
+                sentinel=root/'data/keep.txt';sentinel.write_text('keep')
+                c.publish(candidate());old=c.run_id;guard=c.guard
+                status=c.restart(old)
+                self.assertEqual(status['count'],189);self.assertEqual(status['sequence'],0)
+                self.assertNotEqual(status['run_id'],old)
+                self.assertEqual(status['interval_ms'],16000)
+                self.assertEqual(len(status['entries']),7)
+                self.assertEqual(list((c.folder/'records').iterdir()),[])
+                self.assertIs(c.guard,guard,'Keep exclusive ownership during restart')
+                self.assertEqual(sentinel.read_text(),'keep')
+                self.assertEqual((root/'assets/training-sources.json').read_bytes(),original)
+                self.assertTrue(c.publish(candidate()),'Previous round dedup entries must be cleared')
+                current=c.run_id
+                self.assertEqual(c.restart(old)['count'],190,'Stale retries must not clear the new round')
+                self.assertEqual(c.run_id,current)
+            finally:c.close()
+
+    def test_restart_stops_old_worker_before_starting_new_one(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);fixture(root)
+            with patch.object(LiveCollection,'_launch',side_effect=OSError('offline')):
+                c=LiveCollection(root)
+                try:
+                    old_thread=c.thread;old_run=c.run_id
+                    status=c.restart(old_run)
+                    self.assertFalse(old_thread.is_alive())
+                    self.assertIsNot(c.thread,old_thread)
+                    self.assertTrue(c.thread.is_alive())
+                    self.assertFalse(c.stopped.is_set())
+                    self.assertEqual(status['count'],189)
+                finally:c.close()
+
     def test_network_error_pauses_and_retry_closes(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);fixture(root)
