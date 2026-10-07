@@ -2,7 +2,7 @@
 .artwork-hud{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:100%;height:100%;container-type:inline-size;pointer-events:none;z-index:1;color:#e6e6e6;font-family:"Artwork Myriad Pro","Myriad Pro","PingFang SC",sans-serif;font-style:normal;font-weight:400;letter-spacing:normal;text-shadow:none}
 .stage:fullscreen .artwork-hud{width:min(100vw,177.77777778vh);height:min(100vh,56.25vw)}
 .artwork-hud>*{--u:calc(100cqw / 4608);font-size:calc(30 * var(--u));line-height:calc(40 * var(--u))}
-.hud-model{position:absolute;top:calc(1970 * var(--u));left:calc(3220 * var(--u));width:calc(480 * var(--u))}
+.hud-model{position:absolute;top:calc(1978.5 * var(--u));left:calc(3220 * var(--u));width:calc(480 * var(--u))}
 .hud-row{transform:translateX(calc(25 * var(--u)));height:calc(70 * var(--u));display:flex;gap:.23em;align-items:flex-start;white-space:nowrap}
 .hud-model::after{content:"";position:absolute;left:calc(29 * var(--u));top:calc(40 * var(--u));height:calc(30 * var(--u));width:calc(1.5 * var(--u));background:rgba(230,230,230,.5)}
 .hud-sources{position:relative;margin-left:calc(29 * var(--u));height:calc(7 * 73 * var(--u));overflow:hidden;mask-image:linear-gradient(to bottom,#000 0%,#000 84%,rgba(0,0,0,.25) 94%,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 84%,rgba(0,0,0,.25) 94%,transparent 100%)}
@@ -13,7 +13,7 @@
 .hud-output-panel{--hud-line:calc(1 * var(--u));position:absolute;left:calc(3686 * var(--u));top:calc(1970 * var(--u));width:calc(23 * 37 * var(--u));height:calc(15 * 37 * var(--u));border:0;box-shadow:inset 0 0 0 var(--hud-line) rgba(230,230,230,.5)}
 .hud-output-panel::before{content:"";position:absolute;inset:0;clip-path:inset(var(--hud-line));opacity:.18;background-image:linear-gradient(#e6e6e6 calc(.5 * var(--hud-line)),transparent calc(.5 * var(--hud-line)),transparent calc(100% - .5 * var(--hud-line)),#e6e6e6 calc(100% - .5 * var(--hud-line))),linear-gradient(90deg,#e6e6e6 calc(.5 * var(--hud-line)),transparent calc(.5 * var(--hud-line)),transparent calc(100% - .5 * var(--hud-line)),#e6e6e6 calc(100% - .5 * var(--hud-line)));background-size:calc(37 * var(--u)) calc(37 * var(--u));pointer-events:none}
 .word-subtitle{position:absolute;left:calc(33 * var(--u));top:calc(10 * var(--u));width:calc(776 * var(--u));max-width:none;height:calc(7 * 37 * var(--u));margin:0;padding:0;background:none;transform:none;text-align:left;white-space:normal;overflow-wrap:anywhere;line-height:calc(37 * var(--u));font-size:calc(30 * var(--u))}
-.output-word{opacity:.5}.output-word.spoken{opacity:1}.output-prefix{opacity:1}
+.output-word{opacity:.5}.output-word.spoken{opacity:1}.output-prefix{display:block;opacity:1}
 .hud-chart{position:absolute;left:calc(5.25 * var(--u));top:calc(299.083333 * var(--u));width:calc(287.777778 * var(--u));height:calc(239.472222 * var(--u));overflow:visible}
 /* SVG strokes use the same rendered width as the grid, independent of chart scaling. */
 .hud-chart g[stroke]>*{vector-effect:non-scaling-stroke;stroke-width:var(--hud-line)}

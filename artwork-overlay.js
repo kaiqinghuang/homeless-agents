@@ -63,7 +63,7 @@
  function render(next){
   if(words===next)return;
   words=next;spoken=-1;
-  const prefix=document.createElement('span');prefix.className='output-prefix';prefix.textContent='Homeless Agent Output: ';
+  const prefix=document.createElement('span');prefix.className='output-prefix';prefix.textContent='Homeless Agent Output:';
   spans=next.map(word=>{const span=document.createElement('span');span.className='output-word';span.textContent=word.text;return span;});
   output.replaceChildren(prefix,...spans);
  }
@@ -79,7 +79,7 @@
    Object.assign(measure.style,{position:'fixed',left:'-10000px',top:'0',visibility:'hidden',pointerEvents:'none',width:'776px',fontFamily:'"Artwork Myriad Pro","Myriad Pro","PingFang SC",sans-serif',fontSize:'30px',fontWeight:'400',lineHeight:'37px',whiteSpace:'normal',overflowWrap:'anywhere',padding:'0',border:'0'});
    document.body.appendChild(measure);
   }
-  measure.textContent='Homeless Agent Output: '+text;return measure.scrollHeight;
+  measure.textContent=text;return 37+measure.scrollHeight; // One dedicated title line plus the generated text.
  }
  function page(raw){
   const text=raw.replace(/\s+/g,' ').trim();
