@@ -42,8 +42,8 @@ run('draw=()=>{};state.ready=true;');
    run(`frame(${1000+(cue.start+cue.end)*500})`);
    assert.equal(get('readout').children.findIndex(e=>e.classList.current),cue.word);
    assert.equal(run('lastCue'),index);
-   const subtitle='Homeless Agent Output: '+scaled.words.map(word=>word.text).join('').trim();
-   assert.equal(get('word-subtitle').textContent,subtitle,'full caption stays visible during every cue including pauses');
+   const currentWord=cue.word<0?'':scaled.words[cue.word].text.trim().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,'');
+   assert.equal(get('spoken-word-subtitle').textContent,currentWord,'single word caption follows the mouth, including silence');
    assert.equal(run('state.pose'),cue.shape,'image pose must switch directly to the active cue');
    assert.equal(run('window.afterimageMotion.snapshot().pose'),cue.shape);
    assert.equal(run('window.afterimageMotion.snapshot().pace'),.17);
@@ -52,14 +52,15 @@ run('draw=()=>{};state.ready=true;');
   }
   run(`frame(${1000+scaled.duration*1000+10})`);
   assert.equal(run('state.playing'),false);
-  assert.equal(get('word-subtitle').textContent,'Homeless Agent Output:','finished caption clears');
+  assert.equal(get('spoken-word-subtitle').textContent,'','finished single-word caption clears');
   assert.equal(run('state.pose'),'X');
   assert.equal(get('readout').children.some(e=>e.classList.current),false);
  }
  currentPlan=plans[0];await run('window.afterimageMotion.echo("Make a face.")');
  assert.equal(sent.at(-1).text,'Make a face.');
  assert.equal(await run('window.afterimageMotion.echo("later transcript")'),false);
- assert.equal(get('text').value,'Make a face.');run('stop()');assert.equal(run('state.pose'),'X');assert.equal(get('word-subtitle').textContent,'Homeless Agent Output:');
+ assert.equal(get('text').value,'Make a face.');run('stop()');assert.equal(run('state.pose'),'X');
+ assert.equal(get('spoken-word-subtitle').textContent,'','stop clears the single-word caption');
  let release;pending=new Promise(resolve=>{release=resolve;});
  const loading=run('play()');run('stop()');
  release({ok:true,json:async()=>plans[0]});await loading;

@@ -485,7 +485,7 @@ function frame(now){
  if(state.playing){
   state.elapsed=(now-state.start)/1000;
   const plan=state.plan;
-  if(state.elapsed>=plan.duration){state.playing=false;state.hold='X';pose='X';$('stop').disabled=true;$('play').textContent='Play again';$('status').textContent='Finished · 播放结束';setProgress(100);highlight(-1);window.afterimageOutput?.finish();}
+  if(state.elapsed>=plan.duration){state.playing=false;state.hold='X';pose='X';$('stop').disabled=true;$('play').textContent='Play again';$('status').textContent='Finished · 播放结束';setProgress(100);highlight(-1);}
   else{
    const index=plan.timeline.findIndex(c=>state.elapsed>=c.start&&state.elapsed<c.end);
    const cue=plan.timeline[index];
@@ -500,19 +500,16 @@ function frame(now){
  draw();requestAnimationFrame(frame);
 }
 function setProgress(value){$('progress').style.width=value+'%';document.querySelector('.track').setAttribute('aria-valuenow',Math.round(value));}
-function updateSubtitle(){
- if(window.afterimageOutput){if(state.playing)window.afterimageOutput.render(state.plan?.words??[]);return;}
- const text=state.playing?'Homeless Agent Output: '+(state.plan?.caption??''):'Homeless Agent Output:';
- if($('word-subtitle').textContent!==text)$('word-subtitle').textContent=text;
-}
 function highlight(index){
- updateSubtitle();
  if(index===lastWord)return;
- lastWord=index;window.afterimageOutput?.advance(index);
+ lastWord=index;
+ // Restore the original caption using exactly the same word cue as the mouths.
+ const text=index>=0?state.plan?.words[index]?.text??'':'';
+ $('spoken-word-subtitle').textContent=document.body?.dataset?.mode==='residue'?text.trim():text.trim().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,'');
  [...$('readout').children].forEach((span,i)=>span.classList.toggle('current',i===index));
- // Spoken words stay bright through pauses; future words remain at half opacity.
+ // Silence, stop and completion clear the boxed word caption.
 }
-function resetPlayback(){window.afterimageOutput?.clear();state.poseRevision++;state.playing=false;state.hold='X';state.pose='X';state.elapsed=0;lastCue=-1;highlight(-1);setProgress(0);$('stop').disabled=true;$('play').textContent='Play sentence';document.querySelectorAll('[data-shape]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.shape==='X')));}
+function resetPlayback(){state.poseRevision++;state.playing=false;state.hold='X';state.pose='X';state.elapsed=0;lastCue=-1;highlight(-1);setProgress(0);$('stop').disabled=true;$('play').textContent='Play sentence';document.querySelectorAll('[data-shape]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.shape==='X')));}
 function stop(){state.request++;resetPlayback();$('play').disabled=!state.ready;$('status').textContent='Ready · 等待输入';}
 async function play(){
  const pace=sliderValue('speed');
@@ -528,7 +525,7 @@ async function play(){
   plan.caption=plan.words.map(word=>word.text).join('').trim();
   state.plan=plan;$('readout').replaceChildren(...plan.words.map(word=>{const span=document.createElement('span');span.textContent=word.text;span.title=word.phonemes.join(' ');return span;}));lastWord=-2;
   $('pronunciation').replaceChildren(...plan.words.map(word=>{const row=document.createElement('div');row.textContent=word.text.trim()+'  / '+word.phonemes.join(' ')+' /';return row;}));
-  $('meta').textContent='PHONEMES · '+plan.language+' · '+plan.duration.toFixed(1)+' SEC';state.start=performance.now();state.playing=true;updateSubtitle();$('play').textContent='Restart';$('stop').disabled=false;
+  $('meta').textContent='PHONEMES · '+plan.language+' · '+plan.duration.toFixed(1)+' SEC';state.start=performance.now();state.playing=true;$('play').textContent='Restart';$('stop').disabled=false;
  }catch(error){if(request!==state.request)return;$('error').textContent=error.message;$('status').textContent='Waiting for a sentence';$('stop').disabled=true;}
  finally{if(request===state.request)$('play').disabled=!state.ready;}
 }

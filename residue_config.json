@@ -16,5 +16,6 @@
   "prior_training_steps": 180,
   "additional_training_steps": 120,
   "continuation_samples": 50,
-  "continuation_data": "emoji-only; no country flags; original 139 not replayed"
+  "continuation_data": "emoji-only; no country flags; original 139 not replayed",
+  "collection_enabled": false
 }
